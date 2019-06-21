@@ -1,0 +1,52 @@
+__author__ = 'chuckyin'
+
+"""
+Various I/O helper functions
+"""
+import os
+import datetime
+
+
+def read_line_from_file(filename):
+    val = ''
+    try:
+        infile = open(filename)
+        line = infile.readline()
+        infile.close()
+        val = line.rstrip()
+    except:
+        raise
+
+    return val
+
+
+def append_results_log_to_csv(test_log, summary_filename, print_measurements_only=True):
+    print_headers_first = False
+    if not os.path.exists(summary_filename):
+        print_headers_first = True
+
+    summary_file = open(summary_filename, 'a')
+
+    if print_headers_first:
+        line = test_log.sprint_csv_summary_line(print_headers_only=True,
+                                                print_measurements_only=print_measurements_only)
+        summary_file.write(line)
+
+    line = test_log.sprint_csv_summary_line(print_headers_only=False, print_measurements_only=print_measurements_only)
+    summary_file.write(line)
+    summary_file.close()
+
+
+# actually datetime, but whatever...
+def timestamp(datetime_object=None):
+    """Helper function to standardize timestamp formats used in this module."""
+
+    if datetime_object is None:
+        datetime_object = datetime.datetime.now()
+    return datetime_object.strftime("%Y%m%d-%H%M%S")
+
+
+def datestamp(datetime_object=None):
+    if datetime_object is None:
+        datetime_object = datetime.datetime.now()
+    return datetime_object.strftime("%Y%m%d")

@@ -1,0 +1,282 @@
+#!/bin/bash -e
+
+
+function make_station_run() {
+    cat > ${PROJ_LOWER}_${STATION_LOWER}_run.py <<END
+import test_station
+import station_config
+import factory_test_common.factory_test_gui as gui
+
+# here we can override the station_config so that we don't have
+# to monkey with it in the build system
+station_config.load_station('${PROJ_LOWER}_${STATION_LOWER}')
+# we just have to pass in the TestStation constructor for this specific station
+# and the station_config
+FACTORY_TEST_GUI = gui.FactoryTestGui(station_config, test_station.${PROJ}${CLASS}Station)
+# enter the main loop
+FACTORY_TEST_GUI.main_loop()
+END
+}
+
+function make_station_config() {
+    cat > config/station_config_${PROJ_LOWER}_${STATION_LOWER}.py <<END
+##################################
+# directories
+#
+# Where is the root directory.
+# 'factory-test' directory, logs directories, etc will get placed in there.
+# (use windows-style paths.)
+ROOT_DIR = r'C:\Oculus'
+
+##################################
+# serial number codes
+#
+SERIAL_NUMBER_VALIDATION = False  # set to False for debugging
+SERIAL_NUMBER_MODEL_NUMBER = 'H'  # Fake model number requirement, need config
+
+
+##################################
+# shopfloor
+#
+SHOPFLOOR_SYSTEM = 'Foxlink'
+# Will we be enforcing shopfloor routing?
+ENFORCE_SHOPFLOOR_ROUTING = False
+# does the shopfloor use work orders?
+USE_WORKORDER_ENTRY = True
+
+##################################
+# station hardware
+#
+# visa instruments.  Hint: use Agilent VISA tools to make aliases!
+# (e.g. "DMM" vs "USB0::2391::1543::MY47007422::0::INSTR")
+######## To be config per station type 
+
+
+#####
+### Facebook_IT Enable boolean
+FACEBOOK_IT_ENABLED = False
+
+# does the shopfloor use work orders?
+USE_WORKORDER_ENTRY = False
+END
+
+}
+
+function make_station_limits() {
+    cat > config/station_limits_${PROJ_LOWER}_${STATION_LOWER}.py <<END
+CURRENT_FW_VERSION = 1001
+
+STATION_LIMITS_ARRAYS = [
+    ["TEST ITEM", 1, 5, 10],
+    ["Verify Firmware Load", CURRENT_FW_VERSION, CURRENT_FW_VERSION, 11],
+]
+
+global STATION_LIMITS
+STATION_LIMITS = []
+# turn the above array of arrays into
+# a dictionary of arrays for ease of typing
+for station_limit in STATION_LIMITS_ARRAYS:
+    STATION_LIMITS.append(dict(zip(['name', 'low_limit', 'high_limit', 'unique_id'], station_limit)))
+END
+}
+
+function make_test_station() {
+    cat > test_station/test_station_${PROJ_LOWER}_${STATION_LOWER}.py <<END
+import factory_test_common.test_station.test_station as test_station
+import test_station.test_fixture.test_fixture_${PROJ_LOWER}_${STATION_LOWER} as test_fixture_${PROJ_LOWER}_${STATION_LOWER}
+import test_station.dut.dut_${PROJ_LOWER}_${STATION_LOWER} as dut
+
+
+class ${PROJ}${CLASS}Error(Exception):
+    pass
+
+
+class ${PROJ}${CLASS}Station(test_station.TestStation):
+    """
+        ${PROJ}${CLASS} Station
+    """
+
+    def __init__(self, station_config, operator_interface):
+        test_station.TestStation.__init__(self, station_config, operator_interface)
+        self._fixture = test_fixture_${PROJ_LOWER}_${STATION_LOWER}.${PROJ}${CLASS}Fixture(station_config, operator_interface)
+        self._overall_errorcode = ''
+        self._first_failed_test_result = None
+
+
+    def initialize(self):
+        try:
+            self._operator_interface.print_to_console("Initializing ${PROJ_LOWER} ${STATION_LOWER} station...\n")
+            self._fixture.initialize()
+        except:
+            raise
+
+    def close(self):
+        self._operator_interface.print_to_console("Close...\n")
+        self._operator_interface.print_to_console("\there, I'm shutting the station down..\n")
+        self._fixture.close()
+
+    def _do_test(self, serial_number, test_log):
+        self._overall_result = False
+        self._overall_errorcode = ''
+
+        the_unit = dut.${PROJ}${STATION_LOWER}Dut(serial_number, self._station_config, self._operator_interface)
+        self._operator_interface.print_to_console("Testing Unit %s\n" % the_unit.serial_number)
+        try:
+
+            ### implement tests here.  Note that the test name matches one in the station_limits file ###
+            a_result = 2
+            test_log.set_measured_value_by_name("TEST ITEM", a_result)
+
+        except ${PROJ}${CLASS}Error:
+            self._operator_interface.print_to_console("Non-parametric Test Failure\n")
+            return self.close_test(test_log)
+
+        else:
+            return self.close_test(test_log)
+
+    def close_test(self, test_log):
+        ### Insert code to gracefully restore fixture to known state, e.g. clear_all_relays() ###
+        self._overall_result = test_log.get_overall_result()
+        self._first_failed_test_result = test_log.get_first_failed_test_result()
+        return self._overall_result, self._first_failed_test_result
+
+    def is_ready(self):
+        self._fixture.is_ready()
+END
+
+}
+
+function make_test_fixture() {
+    cat > test_station/test_fixture/test_fixture_${PROJ_LOWER}_${STATION_LOWER}.py <<END
+import factory_test_common.test_station.test_fixture
+
+
+class ${PROJ}${CLASS}Fixture(factory_test_common.test_station.test_fixture.TestFixture):
+    """
+        class for ${PROJ} ${STATION_LOWER} Fixture
+            this is for doing all the specific things necessary to interface with instruments
+    """
+    def __init__(self, station_config, operator_interface):
+        factory_test_common.test_station.test_fixture.TestFixture.__init__(self, station_config, operator_interface)
+
+    def is_ready(self):
+        pass
+
+    def initialize(self):
+        self._operator_interface.print_to_console("Initializing ${PROJ} ${STATION} Fixture\n")
+
+    def close(self):
+        self._operator_interface.print_to_console("Closing ${PROJ} ${STATION} Fixture\n")
+END
+
+}
+
+function make_test_equipment() {
+    cat > test_station/test_equipment/test_equipment_${PROJ_LOWER}_${STATION_LOWER}.py <<END
+import factory_test_common.test_station.test_equipment
+
+
+class ${PROJ}${CLASS}Fixture(factory_test_common.test_station.test_equipment.TestEquipment):
+    """
+        class for ${PROJ} ${STATION_LOWER} Equipment
+            this is for doing all the specific things necessary to interface with equipment
+    """
+    def __init__(self, station_config, operator_interface):
+        factory_test_common.test_station.test_equipment.TestEquipment.__init__(self, station_config, operator_interface)
+
+    def is_ready(self):
+        pass
+
+    def initialize(self):
+        self._operator_interface.print_to_console("Initializing ${PROJ} ${STATION} Fixture\n")
+
+    def close(self):
+        self._operator_interface.print_to_console("Closing ${PROJ} ${STATION} Fixture\n")
+END
+
+}
+
+
+function make_dut() {
+    cat > test_station/dut/dut_${PROJ_LOWER}_${STATION_LOWER}.py <<END
+import factory_test_common.test_station.dut
+
+
+class ${PROJ}${CLASS}Dut(factory_test_common.test_station.dut.DUT):
+    """
+        class for ${PROJ} ${STATION_LOWER} DUT
+            this is for doing all the specific things necessary to DUT
+    """
+    def __init__(self, serial_number, station_config, operator_interface):
+        factory_test_common.test_station.dut.DUT.__init__(self, serial_number, station_config, operator_interface)
+
+    def is_ready(self):
+        pass
+
+    def initialize(self):
+        self._operator_interface.print_to_console("Initializing ${PROJ} ${STATION} Fixture\n")
+
+    def close(self):
+        self._operator_interface.print_to_console("Closing ${PROJ} ${STATION} Fixture\n")
+END
+
+}
+
+
+if [ $# -ne 2 ]; then
+    SCRIPT=`basename $0`
+    echo "Usage: ${SCRIPT} {Project} {Station}"
+    echo "       e.g. ${SCRIPT} Monterey Uniformity"
+    echo "       Note the Title_Case on all args."
+    echo "       If you don't do this, you'll need to change the case of your classnames manually."
+    exit 65
+fi
+
+PROJ=$1
+PROJ_LOWER=`echo ${PROJ} | tr [:upper:] [:lower:]`
+STATION=$2
+STATION_LOWER=`echo ${STATION} | tr [:upper:] [:lower:]`
+CLASS=`echo ${STATION} | tr -d '_'`
+
+# set default permissions for new-ly created files to a+rw
+umask 001
+
+# if we're running this script without running the new-project script,
+# it's possible that we don't have a 'config' directory yet
+if [ ! -d 'config' ]; then
+    mkdir config
+fi
+
+echo "Generating ${PROJ_LOWER}_${STATION_LOWER}_run.py"
+make_station_run
+
+echo "Generating config/station_config_${PROJ_LOWER}_${STATION_LOWER}.py"
+make_station_config
+
+echo "Generating config/station_limits_${PROJ_LOWER}_${STATION_LOWER}.py"
+make_station_limits
+
+echo "Generating test_station/test_station_${PROJ_LOWER}_${STATION_LOWER}.py"
+make_test_station
+
+echo "Generating test_station/test_fixture/test_fixture_${PROJ_LOWER}_${STATION_LOWER}.py"
+make_test_fixture
+
+echo "Generating test_station/test_equipment/test_equipment_${PROJ_LOWER}_${STATION_LOWER}.py"
+make_test_equipment
+
+echo "Generating test_station/dut/dut_${PROJ_LOWER}_${STATION_LOWER}.py"
+make_dut
+
+# add this particular station to the test_station directory's __init__.py
+echo "change test_station/__init__.py to unix style"
+dos2unix test_station/__init__.py
+echo "change test_station/__init__.py to 777 mode"
+chmod -c 777 test_station/__init__.py
+echo "from test_station_${PROJ_LOWER}_${STATION_LOWER} import ${PROJ}${CLASS}Station" >> test_station/__init__.py
+
+echo
+echo "*** WARNING ***"
+echo "Double-check for TitleCase."
+
+

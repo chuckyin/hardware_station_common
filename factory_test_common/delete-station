@@ -1,0 +1,63 @@
+#!/bin/bash -e
+
+if [ $# -ne 2 ]; then
+    SCRIPT=`basename $0`
+    echo "Usage: ${SCRIPT} {Project} {Station}"
+    echo "       e.g. ${SCRIPT} Monterey Uniformity"
+    echo "       Note the Title_Case on all args."
+    echo "       If you don't do this, you'll need to change the case of your classnames manually."
+    exit 65
+fi
+
+PROJ=$1
+PROJ_LOWER=`echo ${PROJ} | tr [:upper:] [:lower:]`
+STATION=$2
+STATION_LOWER=`echo ${STATION} | tr [:upper:] [:lower:]`
+CLASS=`echo ${STATION} | tr -d '_'`
+
+# set default permissions for new-ly created files to a+rw
+umask 001
+
+# if we're running this script without running the new-project script,
+# it's possible that we don't have a 'config' directory yet
+if [ ! -d 'config' ]; then
+    mkdir config
+fi
+
+echo "DELETING ${PROJ_LOWER}_${STATION_LOWER}_run.py"
+rm -f ${PROJ_LOWER}_${STATION_LOWER}_run.py
+
+echo "DELETING config/station_config_${PROJ_LOWER}_${STATION_LOWER}.py"
+rm -f config/station_config_${PROJ_LOWER}_${STATION_LOWER}.py
+
+echo "DELETING config/station_limits_${PROJ_LOWER}_${STATION_LOWER}.py"
+rm -f config/station_limits_${PROJ_LOWER}_${STATION_LOWER}.py
+
+echo "DELETING test_station/test_station_${PROJ_LOWER}_${STATION_LOWER}.py"
+rm -f test_station/test_station_${PROJ_LOWER}_${STATION_LOWER}.py
+
+echo "DELETING test_station/test_fixture/test_fixture_${PROJ_LOWER}_${STATION_LOWER}.py"
+rm -f test_station/test_fixture/test_fixture_${PROJ_LOWER}_${STATION_LOWER}.py
+
+echo "DELETING test_station/test_equipment/test_equipment_${PROJ_LOWER}_${STATION_LOWER}.py"
+rm -f test_station/test_equipment/test_equipment_${PROJ_LOWER}_${STATION_LOWER}.py
+
+echo "DELETING test_station/dut/dut_${PROJ_LOWER}_${STATION_LOWER}.py"
+rm -f test_station/dut/dut_${PROJ_LOWER}_${STATION_LOWER}.py
+
+# remove this particular station to the test_station directory's __init__.py
+echo "DELETING test_station/test_fixture/test_fixture_${PROJ_LOWER}_${STATION_LOWER}.py"
+echo "change test_station/__init__.py to unix style"
+dos2unix test_station/__init__.py
+echo "change test_station/__init__.py to 777 mode"
+chmod -c 777 test_station/__init__.py
+sed -i '/from test_station_${PROJ_LOWER}_${STATION_LOWER} import ${PROJ}${CLASS}Station/ d' test_station/__init__.py
+rm -rf test_station/__init__.py
+
+
+
+echo
+echo "*** WARNING ***"
+echo "Double-check with Chuck Yin for TitleCase."
+
+
