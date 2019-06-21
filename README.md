@@ -1,6 +1,6 @@
 # Hardware Test Common, for simplicity, htc
 
-![OpenExecLogo](https://github.com/chuckyin/htc/blob/master/logo/Logo.PNG)\
+![Logo](https://github.com/chuckyin/htc/blob/master/logo/Logo.png)\
 Open-source framework focused on hardware automation station fast bring-up at component vendor: open, object-orientated and lightweight
 
 ## Overview
