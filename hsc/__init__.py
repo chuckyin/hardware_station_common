@@ -1,4 +1,4 @@
-name = "factory_test_common"
+name = "hardware_station_common"
 
 __all__ = []
 import test_station
