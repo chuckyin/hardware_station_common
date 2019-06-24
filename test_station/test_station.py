@@ -5,8 +5,8 @@ __author__ = 'chuckyin'
 
 import os
 from .test_log import test_log
-import factory_test_common.utils.serial_number as serial_number
-import factory_test_common.utils as utils  # pylint: disable=F0401
+import hardware_station_common.utils.serial_number as serial_number
+import hardware_station_common.utils as utils  # pylint: disable=F0401
 
 
 class TestStationError(Exception):

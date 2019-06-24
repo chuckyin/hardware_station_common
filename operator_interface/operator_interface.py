@@ -4,7 +4,7 @@ __author__ = 'chuckyin'
 
 import os
 import time
-from factory_test_common import utils
+from hardware_station_common import utils
 
 class OperatorInterfaceError(Exception):
     pass

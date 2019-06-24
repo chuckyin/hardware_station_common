@@ -5,7 +5,7 @@ function make_station_run() {
     cat > ${PROJ_LOWER}_${STATION_LOWER}_run.py <<END
 import test_station
 import station_config
-import factory_test_common.factory_test_gui as gui
+import hardware_station_common.factory_test_gui as gui
 
 # here we can override the station_config so that we don't have
 # to monkey with it in the build system
@@ -82,7 +82,7 @@ END
 
 function make_test_station() {
     cat > test_station/test_station_${PROJ_LOWER}_${STATION_LOWER}.py <<END
-import factory_test_common.test_station.test_station as test_station
+import hardware_station_common.test_station.test_station as test_station
 import test_station.test_fixture.test_fixture_${PROJ_LOWER}_${STATION_LOWER} as test_fixture_${PROJ_LOWER}_${STATION_LOWER}
 import test_station.dut.dut_${PROJ_LOWER}_${STATION_LOWER} as dut
 
@@ -148,16 +148,16 @@ END
 
 function make_test_fixture() {
     cat > test_station/test_fixture/test_fixture_${PROJ_LOWER}_${STATION_LOWER}.py <<END
-import factory_test_common.test_station.test_fixture
+import hardware_station_common.test_station.test_fixture
 
 
-class ${PROJ}${CLASS}Fixture(factory_test_common.test_station.test_fixture.TestFixture):
+class ${PROJ}${CLASS}Fixture(hardware_station_common.test_station.test_fixture.TestFixture):
     """
         class for ${PROJ} ${STATION_LOWER} Fixture
             this is for doing all the specific things necessary to interface with instruments
     """
     def __init__(self, station_config, operator_interface):
-        factory_test_common.test_station.test_fixture.TestFixture.__init__(self, station_config, operator_interface)
+        hardware_station_common.test_station.test_fixture.TestFixture.__init__(self, station_config, operator_interface)
 
     def is_ready(self):
         pass
@@ -173,16 +173,16 @@ END
 
 function make_test_equipment() {
     cat > test_station/test_equipment/test_equipment_${PROJ_LOWER}_${STATION_LOWER}.py <<END
-import factory_test_common.test_station.test_equipment
+import hardware_station_common.test_station.test_equipment
 
 
-class ${PROJ}${CLASS}Fixture(factory_test_common.test_station.test_equipment.TestEquipment):
+class ${PROJ}${CLASS}Fixture(hardware_station_common.test_station.test_equipment.TestEquipment):
     """
         class for ${PROJ} ${STATION_LOWER} Equipment
             this is for doing all the specific things necessary to interface with equipment
     """
     def __init__(self, station_config, operator_interface):
-        factory_test_common.test_station.test_equipment.TestEquipment.__init__(self, station_config, operator_interface)
+        hardware_station_common.test_station.test_equipment.TestEquipment.__init__(self, station_config, operator_interface)
 
     def is_ready(self):
         pass
@@ -199,16 +199,16 @@ END
 
 function make_dut() {
     cat > test_station/dut/dut_${PROJ_LOWER}_${STATION_LOWER}.py <<END
-import factory_test_common.test_station.dut
+import hardware_station_common.test_station.dut
 
 
-class ${PROJ}${CLASS}Dut(factory_test_common.test_station.dut.DUT):
+class ${PROJ}${CLASS}Dut(hardware_station_common.test_station.dut.DUT):
     """
         class for ${PROJ} ${STATION_LOWER} DUT
             this is for doing all the specific things necessary to DUT
     """
     def __init__(self, serial_number, station_config, operator_interface):
-        factory_test_common.test_station.dut.DUT.__init__(self, serial_number, station_config, operator_interface)
+        hardware_station_common.test_station.dut.DUT.__init__(self, serial_number, station_config, operator_interface)
 
     def is_ready(self):
         pass

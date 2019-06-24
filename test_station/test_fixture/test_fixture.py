@@ -3,7 +3,7 @@ __author__ = 'chuckyin'
 # pylint: disable=R0921
 # Fix for the fact that nothing references this in here.
 
-import factory_test_common.utils as utils
+import hardware_station_common.utils as utils
 
 class TestFixture(object):
     """

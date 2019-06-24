@@ -9,7 +9,7 @@ if __name__ == '__main__':  # enable testing this module as a module.   Need to 
     # cp -R ../../squtils .
     import squtils
 else:
-    import factory_test_common.utils as utils  # pylint: disable=F0401
+    import hardware_station_common.utils as utils  # pylint: disable=F0401
 import shop_floor_interface  # pylint: disable=W0403
 import collections
 
