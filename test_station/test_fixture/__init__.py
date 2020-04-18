@@ -1,2 +1,2 @@
 __all__ = ['test_fixture']
-from test_fixture import TestFixture
+from hardware_station_common.test_station.test_fixture.test_fixture import TestFixture

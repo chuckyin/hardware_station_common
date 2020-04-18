@@ -6,9 +6,9 @@ __author__ = 'chuckyin'
 # pylint: disable=C0103
 # pylint: disable=W0613
 
-import Tkinter as tk
-import tkMessageBox
-
+import tkinter as tk
+#import tkMessageBox
+from tkinter import messagebox
 
 ######  GUI Utilites ######
 
@@ -34,15 +34,15 @@ class StatusConsoleText(tk.Text):
 class MessageBox(object):
     @classmethod
     def warning(cls, title=None, msg=None):
-        tkMessageBox.showwarning(title, msg)
+        messagebox.showwarning(title, msg)
 
     @classmethod
     def error(cls, title=None, msg=None):
-        tkMessageBox.showerror(title, msg)
+        messagebox.showerror(title, msg)
 
     @classmethod
     def info(cls, title=None, msg=None):
-        tkMessageBox.showinfo(title, msg)
+        messagebox.showinfo(title, msg)
 
 
 class ImageDisplayBox(object):  # pylint: disable=R0903

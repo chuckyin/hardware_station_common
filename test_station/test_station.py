@@ -4,7 +4,7 @@ __author__ = 'chuckyin'
 # pylint: disable=R0921
 
 import os
-from .test_log import test_log
+from hardware_station_common.test_station.test_log import test_log as test_log
 import hardware_station_common.utils.serial_number as serial_number
 import hardware_station_common.utils as utils  # pylint: disable=F0401
 

@@ -21,7 +21,8 @@ class OperatorInterface(object):
                 utils.os_utils.mkdir_p(self._debug_log_dir)
             self._debug_file_name = os.path.join(self._debug_log_dir, utils.io_utils.timestamp() + "_debug.log")
             try:
-                self._debug_log_obj = open(self._debug_file_name, 'w', 0)  # use unbuffered file for writing debug info
+                #self._debug_log_obj = open(self._debug_file_name, 'w', 0)  # use unbuffered file for writing debug info
+                self._debug_log_obj = open(self._debug_file_name, 'w')  # use unbuffered file for writing debug info
             except:
                 raise
 
@@ -44,8 +45,8 @@ class OperatorInterface(object):
 
             self._debug_log_obj.close()
             self._debug_file_name = os.path.join(self._debug_log_dir, utils.io_utils.timestamp() + "_debug.log")
-            self._debug_log_obj = open(self._debug_file_name, 'w', 0)  # use unbuffered file for writing debug info
-
+#            self._debug_log_obj = open(self._debug_file_name, 'w', 0)  # use unbuffered file for writing debug info
+            self._debug_log_obj = open(self._debug_file_name, 'w')  # use unbuffered file for writing debug info
     def close(self):
         if self._debug_log:
             self._debug_log_obj.close()

@@ -1,2 +1,2 @@
 __all__ = ['test_equipment']
-from test_equipment import TestEquipment
+from hardware_station_common.test_station.test_equipment.test_equipment import TestEquipment

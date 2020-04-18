@@ -5,12 +5,8 @@ from datetime import timedelta
 import re
 import os
 import sys
-if __name__ == '__main__':  # enable testing this module as a module.   Need to copy squtils directory in to our local directory temporarily.
-    # cp -R ../../squtils .
-    import squtils
-else:
-    import hardware_station_common.utils as utils  # pylint: disable=F0401
-import shop_floor_interface  # pylint: disable=W0403
+import hardware_station_common.utils as utils  # pylint: disable=F0401
+import hardware_station_common.test_station.test_log.shop_floor_interface as shop_floor_interface # pylint: disable=W0403
 import collections
 
 ERROR_CODE_UNKNOWN = 9999
@@ -102,7 +98,7 @@ class TestRecord(object):
             self._user_meta_data_dict = meta
         else:
             # err out for now.   In the future, just iterate the new dict and add key by key.
-            print self._user_meta_data_dict
+            print (self._user_meta_data_dict)
             raise TestLimitsError("you're trying to overwrite a pre-existing test_record metadata dictionary.")
 
     def get_user_metadata_dict(self):
@@ -348,7 +344,7 @@ class TestRecord(object):
         station_limits_file = os.path.join(
             config_path, 'config', ('station_limits_' + station_config.STATION_TYPE + '.py'))
         try:
-            execfile(station_limits_file, globals(), locals())  # imports station_limits into current namespace
+            exec(open(station_limits_file).read(), globals(), locals())# imports station_limits into current namespace
             # also provides "self" and "station_config" to station_limits_file
             # this is probably bad infosec practice :)
         except Exception as e:
@@ -668,18 +664,18 @@ if __name__ == '__main__':
 
         LOG.end_test()
 
-        print "-----------------------------------------"
-        print "Test Overview for CSV summary file:\n"
+        print ("-----------------------------------------")
+        print ("Test Overview for CSV summary file:\n")
 
-        print "::HEADERS::"
-        print LOG.sprint_csv_summary_line(True)
-        print "::DATA::"
-        print LOG.sprint_csv_summary_line()
-        print "-----------------------------------------\n"
+        print ("::HEADERS::")
+        print (LOG.sprint_csv_summary_line(True))
+        print ("::DATA::")
+        print (LOG.sprint_csv_summary_line())
+        print ("-----------------------------------------\n")
 
         print ("Per-instance log file: %s" % LOG.get_filename())
 
-        print "-----------------------------------------\n"
+        print ("-----------------------------------------\n")
         LOG.print_to_csvfile()
 
     except KeyboardInterrupt as keyboard_interrupt:

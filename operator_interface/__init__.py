@@ -1,3 +1,3 @@
 __all__ = ['OperatorInterfaceError', 'OperatorInterface']
-from .operator_interface import OperatorInterface
-from .operator_interface import OperatorInterfaceError
+from hardware_station_common.operator_interface.operator_interface import OperatorInterface
+from hardware_station_common.operator_interface.operator_interface import OperatorInterfaceError

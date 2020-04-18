@@ -33,7 +33,7 @@ class TimeoutThread(threading.Thread):
             if (self.elapsed_ms % 1000) == 0:
                 tick = self.timeout_s - (self.elapsed_ms / 1000)
                 if self.show_debug:
-                    print "[%d]" % tick
+                    print ("[%d]" % tick)
         print (self.timeout_message)
         if self.timeout_action:
             self.timeout_action(self.timeout_action_parameter)
@@ -48,7 +48,7 @@ def main():
     while console_input != 'a':
         console_input = raw_input("\nType the letter a.\n")
 
-    print "Finished normal execution path.  Stopping the timer thread..."
+    print ("Finished normal execution path.  Stopping the timer thread...")
     thread.stop()
 
 if __name__ == '__main__':

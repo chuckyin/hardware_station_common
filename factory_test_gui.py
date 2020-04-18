@@ -6,15 +6,18 @@ __author__ = 'chuckyin'
 # pylint: disable=R0924
 # pylint: disable=W0201
 
-import Tkinter as tk
-import tkMessageBox
+#import Tkinter as tk
+#import tkMessageBox
+
+import tkinter as tk
+from tkinter import messagebox
 import time
 import argparse
-import operator_interface
-import test_station
-import utils
+import hardware_station_common.operator_interface as operator_interface
+import hardware_station_common.test_station as test_station
+import hardware_station_common.utils as utils
 import re
-import test_station.test_log
+import hardware_station_common.test_station.test_log as test_log
 import os
 
 class FactoryTestGui(object):
@@ -157,7 +160,7 @@ class FactoryTestGui(object):
         self.gui_show_result(serial_number, overall_result, first_failed_test_result)
 
     def run_test(self, serial_number):
-        print serial_number
+        print (serial_number)
         if self.is_looping_enabled():
             self._g_loop_sn = serial_number      # record the SN into the persistent global for next time.
         self.test_iteration(serial_number)
@@ -175,7 +178,7 @@ class FactoryTestGui(object):
     def on_sn_enter(self, event):
         if self._g_entry_allowed is True:
             if (event is None):
-                print "on_sn_enter (looping): Using serial number value of %s" % self._g_loop_sn
+                print ("on_sn_enter (looping): Using serial number value of %s" % self._g_loop_sn)
                 user_value = self._g_loop_sn
             else:
                 user_value = event.widget.get()
@@ -186,7 +189,7 @@ class FactoryTestGui(object):
                     self._g_loop_sn = user_value      # record the SN into the persistent global for next time.
                 self.setguistate_waitfortesterready()
             except test_station.test_station.TestStationSerialNumberError as teststationerror:
-                tkMessageBox.showwarning(message="%s" % str(teststationerror))
+                messagebox.showwarning(message="%s" % str(teststationerror))
                 self._g_entry_allowed = True
                 self.setguistate_waitforsn()
 
@@ -297,7 +300,7 @@ class FactoryTestGui(object):
             self._operator_interface = operator_interface.OperatorInterface(self.station_config, self._cons,
                                                                             self._prompt, log_to_file=True)
         except:
-            tkMessageBox.showerror(title="Station Config Error", message=("Can't initialize operator interface!\n"))
+            messagebox.showerror(title="Station Config Error", message=("Can't initialize operator interface!\n"))
             raise
 
         self._g_num_loops_completed = 0
@@ -308,7 +311,7 @@ class FactoryTestGui(object):
             self._loop_label = tk.Label(self.root, font=little_font)
             self._loop_label.pack()
             if args.serialnum is not None:
-                print "using serial number %s" % args.serialnum
+                print ("using serial number %s" % args.serialnum)
                 self._g_loop_sn = args.serialnum
                 self._sn_entry.insert(tk.END, self._g_loop_sn)
         self.update_loop_counter()
@@ -393,11 +396,11 @@ class UpdateStationIdDialog(utils.gui_utils.Dialog):
             self._gui.create_station()
             return True
         except ValueError:
-            tkMessageBox.showerror(title="Station Config Error",
+            messagebox.showerror(title="Station Config Error",
                                    message=("Station ID is of the form stationId-stationNumber"))
             return False
         except test_station.test_station.TestStationError:
-            tkMessageBox.showerror(title="Station Config Error", message=("%s is not a valid station type!" %
+            messagebox.showerror(title="Station Config Error", message=("%s is not a valid station type!" %
                                                                           self._gui.station_config.STATION_TYPE))
             return False
         except:
