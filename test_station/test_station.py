@@ -4,7 +4,7 @@ __author__ = 'chuckyin'
 # pylint: disable=R0921
 
 import os
-from hardware_station_common.test_station.test_log import test_log as test_log
+from .test_log import test_log
 import hardware_station_common.utils.serial_number as serial_number
 import hardware_station_common.utils as utils  # pylint: disable=F0401
 
@@ -14,8 +14,8 @@ class TestStationError(Exception):
 
 
 class TestStationProcessControlError(Exception):
-    pass
-
+    def __init__(self, message = None):
+        self.message = message
 
 class TestStationSerialNumberError(Exception):
     pass
@@ -54,19 +54,24 @@ class TestStation(object):
         """
         test_logs_directory = os.path.join(self._station_config.ROOT_DIR, "factory-test_logs")
         station_id = ("%s-%s" % (self._station_config.STATION_TYPE, self._station_config.STATION_NUMBER))
-        testlog = test_log.TestRecord(serial_num, logs_dir=test_logs_directory, station_id=("%s" % station_id))
+        sorted_export_log = True
+        if hasattr(self._station_config, 'SORTED_EXPORT_LOG'):
+            sorted_export_log = self._station_config.SORTED_EXPORT_LOG
+        testlog = test_log.TestRecord(serial_num, logs_dir=test_logs_directory, station_id=("%s" % station_id),
+                                      sorted_export_log=sorted_export_log)
         if self.workorder is not None:
             testlog.set_user_metadata_dict({'work_order': self.workorder})  # add work order to log file
         self._operator_interface.print_to_console("Checking Unit %s...\n" % serial_num)
         testlog.load_limits(self._station_config)
 
         # Here's where the specialized station code is called:
-        if testlog.ok_to_test(serial_num) is True:
+        ok_to_test_res = testlog.ok_to_test(serial_num)
+        if ok_to_test_res is True or (isinstance(ok_to_test_res, tuple) and ok_to_test_res[0]):
             (self._overall_result, self._first_failing_test_result) = self._do_test(serial_num, testlog)
         else:
             self._operator_interface.print_to_console("[WARNING] Process Control Error for %s\n" % serial_num,
                                                       'yellow')
-            raise TestStationProcessControlError
+            raise TestStationProcessControlError(f'not ok for testing, {ok_to_test_res}')
 
         # stuff like submit?
         # if successful submission is required for pass, check that here based on a flag
@@ -80,12 +85,17 @@ class TestStation(object):
                 csv_basename = "{0}_{1}_summary.csv".format(station_id, utils.io_utils.datestamp())
                 csv_summary_file = os.path.join(self._station_config.CSV_SUMMARY_DIR, csv_basename)
                 utils.io_utils.append_results_log_to_csv(testlog, csv_summary_file, print_measurements_only=True)
-        except StandardError:
-            self._operator_interface.print_to_console("WARNING: unable to write to test log file.\n")
+        except Exception as e:
+            self._operator_interface.print_to_console(f"WARNING: unable to write to test log file {str(e)}")
+            raise TestStationProcessControlError('fail to save test log.')
 
         if self._station_config.FACEBOOK_IT_ENABLED:
             self._operator_interface.print_to_console("saving results to shopfloor system.\n")
-            testlog.save_results()
+            save_result_res = testlog.save_results()
+            if not save_result_res or (isinstance(save_result_res, tuple) and not save_result_res[0]):
+                self._operator_interface.print_to_console("[WARNING] Process Control Error for %s\n" % serial_num,
+                                                          'yellow')
+                raise TestStationProcessControlError(f'fail to save result. {save_result_res}')
 
         self._operator_interface.print_to_console("Testing Unit %s Complete\n" % serial_num)
         #AppendResultToCSV(startTimestamp, sn, hw_id, didUUTPass, returnCode)

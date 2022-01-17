@@ -4,6 +4,7 @@ __author__ = 'chuckyin'
 
 import os
 import time
+import datetime
 from hardware_station_common import utils
 
 class OperatorInterfaceError(Exception):
@@ -37,7 +38,9 @@ class OperatorInterface(object):
         if color is not None:
             self._console.set_bg(color)
         if self._debug_log:
-            self._debug_log_obj.write('[{0}]: '.format(utils.io_utils.timestamp()) + msg)
+            # self._debug_log_obj.write('[{0}]: '.format(utils.io_utils.timestamp()) + msg)
+            self._debug_log_obj.write('[{0}]: '.format(datetime.datetime.now().strftime("%Y%m%d-%H%M%S.%f")) + msg)
+            self._debug_log_obj.flush()
 
     def clear_console(self):
         self._console.clear()
@@ -47,6 +50,7 @@ class OperatorInterface(object):
             self._debug_file_name = os.path.join(self._debug_log_dir, utils.io_utils.timestamp() + "_debug.log")
 #            self._debug_log_obj = open(self._debug_file_name, 'w', 0)  # use unbuffered file for writing debug info
             self._debug_log_obj = open(self._debug_file_name, 'w')  # use unbuffered file for writing debug info
+
     def close(self):
         if self._debug_log:
             self._debug_log_obj.close()
@@ -68,12 +72,8 @@ class OperatorInterface(object):
         :param rationale:
         :return:
         """
-        message = 'Sleeping for {0}: '.format(pause_seconds)
-        if rationale is not None:
-            message += rationale + ' \n'
-        else:
-            message += 'ZZZ \n'
-        self.print_to_console(message)
+        self._console.print_msg(rationale)
+        self._prompt.update()
         time.sleep(pause_seconds)
 
     def display_image(self, image_file):

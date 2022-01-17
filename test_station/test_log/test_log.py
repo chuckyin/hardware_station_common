@@ -1,5 +1,6 @@
 __author__ = 'chuckyin'
 
+import time
 from datetime import datetime
 from datetime import timedelta
 import re
@@ -57,7 +58,10 @@ class TestRecord(object):
         thisRun.EndTest()
 
     '''
-    def __init__(self, uut_sn, logs_dir="logs", station_id=None):
+    def __del__(self):
+        del self._results_array, self._user_meta_data_dict, self._shopfloor
+
+    def __init__(self, uut_sn, logs_dir="logs", station_id=None, sorted_export_log=True):
         self._uut_sn = uut_sn
         self._start_time = datetime.now()
         self._end_time = None
@@ -66,6 +70,7 @@ class TestRecord(object):
         self._overall_did_pass = None
         self._overall_error_code = None
         self._first_failing_test_result = None
+        self._sorted_export_log = sorted_export_log
 
         # keeping with the idea that a test log should carry enough data to print a report,
         # allow folks to enter their own arbitrary metadata
@@ -91,6 +96,7 @@ class TestRecord(object):
 
         self._overalls_are_uptodate = False  # flag to track whether or not results have been added since the last time
                                             # the overall result (or error code) was queried.
+
         self._shopfloor = shop_floor_interface.shop_floor.ShopFloor()
 
     def set_user_metadata_dict(self, meta):
@@ -113,7 +119,7 @@ class TestRecord(object):
 
     def add_result(self, test_result_object):
         if test_result_object.get_test_name() in self._results_array:
-            raise TestLimitsError("Test result names must be unique")
+            raise TestLimitsError("Test result names must be unique. {0}".format(test_result_object.get_test_name()))
         else:
             self._overalls_are_uptodate = False
             if test_result_object.get_unique_id() is 1:
@@ -165,9 +171,11 @@ class TestRecord(object):
     def get_unique_test_instance_id(self):
         return self._unique_instance_id
 
-    def _sort_test_results_by_timestamp(self):
+    def _sort_test_results_by(self):
+        if not self._sorted_export_log:
+            return self._results_array.values()
         return sorted(self._results_array.values(),
-                      key=lambda t: t.measurement_time if t.measurement_time else datetime.now())
+                      key=lambda t: (t.measurement_time, t._unique_id) if t.measurement_time else (datetime.now(), t._unique_id))
 
     def calculate_overall_result(self):
         '''Callers should use the GetOverallResult() and GetOverallErrorCode functions instead.
@@ -179,7 +187,7 @@ class TestRecord(object):
             self._overall_did_pass = False
             self._overall_error_code = ERROR_CODE_NO_RESULTS
         else:
-            for test in self._sort_test_results_by_timestamp():
+            for test in self._sort_test_results_by():
                 # grab the unique id of the first test that failed.
                 if not test.did_pass():
                     overall_did_pass = False
@@ -229,6 +237,34 @@ class TestRecord(object):
             self.calculate_overall_result()   # loads the member variable. We don't need to.
         return self._first_failing_test_result
 
+    def sprint_csv_summary_header(self):
+        csv_line = "UUT_Serial_Number,Station_ID,StartTime,EndTime,OverallResult,OverallErrorCode"
+        user_dictionary = self.get_user_metadata_dict()
+        if user_dictionary is not None:
+            for key in user_dictionary:
+                csv_line += "," + key
+        for test in self._results_array.values():
+            csv_line += "," + test.s_print_csv(True, print_measurements_only=True)
+        csv_line += "\n"
+
+        csv_line += "UpperLimit--->,NA,NA,NA,NA,NA"
+        if user_dictionary is not None:
+            for key in user_dictionary:
+                csv_line += ",NA"
+        for test in self._results_array.values():
+            csv_line += f",{test._high_limit}"
+        csv_line += "\n"
+
+        csv_line += "LowerLimit--->,NA,NA,NA,NA,NA"
+        if user_dictionary is not None:
+            for key in user_dictionary:
+                csv_line += ",NA"
+        for test in self._results_array.values():
+            csv_line += f",{test._low_limit}"
+        csv_line += "\n"
+
+        return csv_line
+
     def sprint_csv_summary_line(self, print_headers_only=False, print_measurements_only=False):
         csv_line = ""
 
@@ -268,8 +304,10 @@ class TestRecord(object):
         try:
             log_file = open(full_path, 'w')
             log_file.write(self.sprint_meta_data_to_csv())
-            for test in self._sort_test_results_by_timestamp():
+
+            for test in self._sort_test_results_by():
                 log_file.write(test.s_print_csv(with_new_line=True))
+
             log_file.close()
         except:
             print ("ERROR: couldn't open file [%s] for writing!\n" % full_path)
@@ -307,16 +345,10 @@ class TestRecord(object):
         return os.path.join(self._logs_dir, self._filename)
 
     def ok_to_test(self, serial_number):
-        if self._shopfloor.ok_to_test(serial_number) is True:
-            return True
-        else:
-            return False
+        return self._shopfloor.ok_to_test(serial_number)
 
     def save_results(self):
-        if self._shopfloor.save_results(self) is True:
-            return True
-        else:
-            return False
+        return self._shopfloor.save_results(self)
 
     def get_test_by_name(self, test_name):
         if test_name not in self._results_array:
@@ -338,11 +370,10 @@ class TestRecord(object):
         # allow running of test_log standalone for module testing.
         if station_config is None:
             return
-
         global STATION_LIMITS  # from station_limits_file
-        config_path = os.path.dirname(os.path.realpath(station_config.__file__))
         station_limits_file = os.path.join(
-            config_path, 'config', ('station_limits_' + station_config.STATION_TYPE + '.py'))
+            os.path.dirname(station_config.__file__), 'config', ('station_limits_' + station_config.STATION_TYPE + '.py'))
+        # print(station_limits_file)
         try:
             exec(open(station_limits_file).read(), globals(), locals())# imports station_limits into current namespace
             # also provides "self" and "station_config" to station_limits_file
@@ -428,7 +459,7 @@ class TestResult(object):
 
     def set_measured_value(self, value):
         self._measured_value = value
-        print ("DEBUG: (%s) recording value %s" % (self._test_name, value))
+        # print ("DEBUG: (%s) recording value %s" % (self._test_name, value))
         self.measurement_time = datetime.now()
         low_ok = False
         no_test_done = True
@@ -507,6 +538,9 @@ class TestResult(object):
                 elif normalized == 'FAIL':
                     self._did_pass = False
                     self._numeric_error_code = FAIL_MANUALLY_ENTERED
+                # edit by elton
+                elif normalized == self._high_limit.upper() and normalized == self._low_limit.upper():
+                    self._did_pass = True
                 else:
                     self._did_pass = False
                     unhandled_input = True

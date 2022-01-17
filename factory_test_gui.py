@@ -19,6 +19,12 @@ import hardware_station_common.utils as utils
 import re
 import hardware_station_common.test_station.test_log as test_log
 import os
+import ctypes
+import sys
+import gc
+import logging
+import datetime
+
 
 class FactoryTestGui(object):
     def __init__(self, station_config, test_station_init):
@@ -104,6 +110,16 @@ class FactoryTestGui(object):
             self.on_sn_enter(None)     # on_sn_enter expects the calling event to be passed in.
                                      # telling it we have None will make it use the gLoopSN
 
+    def write(self, msg):
+        """
+        @type msg: str
+        @return:
+        """
+        if not msg.isspace():
+            msg = msg.strip('\n')
+            msg = msg.replace('\r', '」') + '\n'
+            self._operator_interface.print_to_console(msg)
+
     # if there are basic errors connecting to instruments, we should find out before
     # an operator starts testing.
     def setguistate_initializetester(self, station):
@@ -112,9 +128,33 @@ class FactoryTestGui(object):
         setup_ok = True
         if station:
             try:
+                gc.enable()
+                if (hasattr(self.station_config, 'IS_PRINT_TO_LOG')
+                        and self.station_config.IS_PRINT_TO_LOG):
+                    sys.stdout = self
+                    sys.stderr = self
+                    sys.stdin = None
+
+                if (hasattr(self.station_config, 'IS_LOG_PROFILING')
+                     and self.station_config.IS_LOG_PROFILING):
+                    logger = logging.getLogger('profiling')
+                    logger.setLevel(logging.DEBUG)
+                    fn = f'profile_{datetime.datetime.now().strftime("%Y%m%d_%H%M%S")}.log'
+                    handler = logging.FileHandler(fn)
+                    handler.setLevel(logging.DEBUG)
+                    logger.addHandler(handler)
+
                 station.initialize()
+
+                show_console = 0
+                whnd = ctypes.windll.kernel32.GetConsoleWindow()
+                if whnd != 0:
+                    if hasattr(self.station_config, 'SHOW_CONSOLE') and self.station_config.SHOW_CONSOLE:
+                        show_console = 1
+                ctypes.windll.user32.ShowWindow(whnd, show_console)
+
             except test_station.test_station.TestStationError:
-                self._operator_interface.print_to_console("Error Initializing Test Station", "red")
+                self._operator_interface.print_to_console("Error Initializing Test Station.\n", "red")
                 setup_ok = False
         if setup_ok:
             self._operator_interface.print_to_console("Initialization complete.\n")
@@ -128,45 +168,80 @@ class FactoryTestGui(object):
     def setguistate_waitfortesterready(self):
         self._cons.set_bg('grey')
         self._sn_entry.config(state='disabled')
-        if not self.is_looping_enabled():
-            self.station.is_ready()
+        self.station.is_ready()
+        # if not self.is_looping_enabled():
+        #     self._operator_interface.clear_console()
         self.setguistate_run()
+
+    def thread_it(self, func, *args):
+        import threading
+        t = threading.Thread(target=func, args=args)
+        t.setDaemon(True)
+        t.start()
+        return t
 
     def setguistate_run(self):
         self._prompt.config(text="Test in progress.")
         self._prompt.update()
         self._cons.set_bg('white')
-        self._operator_interface.clear_console()
-        self.run_test(self._sn_entry.get())
+        if hasattr(self.station_config, 'OPTIMIZE_UI_MODE') and self.station_config.OPTIMIZE_UI_MODE:
+            args = self._sn_entry.get()
+            self.thread_it(self.run_test, args)
+        else:
+            self.run_test(self._sn_entry.get())
 
     def test_iteration(self, serial_number):
         self._operator_interface.print_to_console("Running Test.\n")
+        overall_result = False
+        first_failed_test_result = None
         if self.station_config.USE_WORKORDER_ENTRY:
             self.station.workorder = self.g_workorder
         try:
             (overall_result, first_failed_test_result) = self.station.test_unit(serial_number.upper())
-        except test_station.test_station.TestStationProcessControlError:
-            self._operator_interface.operator_input("Process Control Error",
-                                                    "Unit %s not ok for testing.\n" % serial_number)
-            self._operator_interface.clear_console()
-            self._operator_interface.print_to_console("", 'grey')
-            self.setguistate_waitforsn()
+        except test_station.test_station.TestStationProcessControlError as e:
+            # self._operator_interface.operator_input("Process Control Error",
+            #                                         "Unit %s [  %s  ] ...\n" % (serial_number, e.message))
+            msg = 'Process Control Error: Unit %s [  %s  ] ...\n' % (serial_number, e.message)
+            self._operator_interface.print_to_console(msg, 'red')
+            self._operator_interface.print_to_console('*******************\n')
+            self._g_loop_sn = None  # cancle the loop test while error
             return
             
         except Exception as e:
-            self._operator_interface.print_to_console("Test Station Error:\n{0}".format(str(e)), "red")
-            raise
+            self._operator_interface.print_to_console("Test Station Error:{0}\n".format(str(e)), "red")
+            self._g_loop_sn = None
 
         self.gui_show_result(serial_number, overall_result, first_failed_test_result)
 
     def run_test(self, serial_number):
-        print (serial_number)
+        print (f'SERINAL_NUMBER:{serial_number}\n')
         if self.is_looping_enabled():
-            self._g_loop_sn = serial_number      # record the SN into the persistent global for next time.
+            self._g_loop_sn = serial_number  # record the SN into the persistent global for next time.
         self.test_iteration(serial_number)
         while self._g_loop_sn is not None:
             self.test_iteration(serial_number)
         self.setguistate_waitforsn()
+        gc.collect()
+
+    def get_free_space_mb(self, folder):
+        import ctypes
+        free_bytes = ctypes.c_ulonglong(0)
+        ctypes.windll.kernel32.GetDiskFreeSpaceExW(ctypes.c_wchar_p(folder), None, None, ctypes.pointer(free_bytes))
+        return free_bytes.value / 1024 / 1024
+
+    def check_free_space_ready(self):
+        if not hasattr(self.station_config, 'MIN_SPACE_REQUIRED'):
+            return True
+        if isinstance(self.station_config.MIN_SPACE_REQUIRED, list):
+            req_dirs = [c for c in self.station_config.MIN_SPACE_REQUIRED if os.path.exists(c[0])]
+            chk_free_space = [self.get_free_space_mb(req_dir) >= req_size for req_dir, req_size in req_dirs]
+            if not all(chk_free_space):
+                msg = f"Unable to start test, please check mini-space required: {req_dirs} "
+                self._operator_interface.operator_input('WARN', msg=msg, msg_type='warning')
+                return False
+        else:
+            self._operator_interface.print_to_console(f'Please update the configuration named min_space_required.\n')
+        return True
 
     #####################################################################
     # WaitFor Fixture Ready pollers.
@@ -176,9 +251,13 @@ class FactoryTestGui(object):
     # GUI Event handler callbacks
     #####################################################################
     def on_sn_enter(self, event):
+        if not self.check_free_space_ready():
+            return
         if self._g_entry_allowed is True:
+            self._operator_interface.clear_console()
             if (event is None):
-                print ("on_sn_enter (looping): Using serial number value of %s" % self._g_loop_sn)
+                self._operator_interface.print_to_console(
+                    "on_sn_enter (looping): Using serial number value of %s\n" % self._g_loop_sn)
                 user_value = self._g_loop_sn
             else:
                 user_value = event.widget.get()
@@ -186,6 +265,9 @@ class FactoryTestGui(object):
                 self._g_entry_allowed = False
                 self.station.validate_sn(user_value)
                 if self.is_looping_enabled():
+                    self._g_num_loops_completed = 0
+                    self._g_num_passing_loops = 0
+                    self.update_loop_counter()
                     self._g_loop_sn = user_value      # record the SN into the persistent global for next time.
                 self.setguistate_waitfortesterready()
             except test_station.test_station.TestStationSerialNumberError as teststationerror:
@@ -220,7 +302,7 @@ class FactoryTestGui(object):
 
         result_message += "\n-----------------------------------\n"
         result_message += "Error Code = {0}\n".format(error_code)
-        if not overall_result:
+        if not overall_result and first_failed_test_result is not None:
             result_message += first_failed_test_result.s_print_csv()
         result_message += "\n-----------------------------------\n"
         result_message += "\n\n"
@@ -271,7 +353,6 @@ class FactoryTestGui(object):
         self.root = tk.Tk()
         self.root.title(window_title)
 
-                ## operator instructions prompt (no need for logging) ##
         self._prompt = tk.Label(self.root, font=big_font, height=3)
         self._prompt.config(text="Scan or type DUT Serial Number:")
         self._prompt.pack(pady=10)
@@ -311,7 +392,7 @@ class FactoryTestGui(object):
             self._loop_label = tk.Label(self.root, font=little_font)
             self._loop_label.pack()
             if args.serialnum is not None:
-                print ("using serial number %s" % args.serialnum)
+                self._operator_interface.print_to_console ("using serial number %s" % args.serialnum)
                 self._g_loop_sn = args.serialnum
                 self._sn_entry.insert(tk.END, self._g_loop_sn)
         self.update_loop_counter()
@@ -327,6 +408,7 @@ class FactoryTestGui(object):
             self._version_info.config(text=version_data)
             self._version_info.pack(pady=5)
 
+        self._sn_entry['state'] = 'readonly'
         if self.station_config.USE_WORKORDER_ENTRY:
             self.update_workorder_display()
         if self.station_config.STATION_NUMBER == 0:
@@ -349,7 +431,7 @@ class FactoryTestGui(object):
 
 class UpdateWorkorderDialog(utils.gui_utils.Dialog):
     def __init__(self, factory_gui, parent, title):
-        squtils.gui_utils.Dialog.__init__(self, parent, title)
+        utils.gui_utils.Dialog.__init__(self, parent, title)
         self._gui = factory_gui
 
     def body(self, master):
@@ -374,6 +456,7 @@ class UpdateStationIdDialog(utils.gui_utils.Dialog):
         utils.gui_utils.Dialog.__init__(self, parent, title)
         self._gui = factory_gui
         self._station_id = None
+        self._station_id_pattern = r'[\\/:*?"<>|\r\n]+'
 
     def body(self, master):
         tk.Label(master, text="Station ID:").grid(row=0)
@@ -391,6 +474,8 @@ class UpdateStationIdDialog(utils.gui_utils.Dialog):
     def validate(self):
         self._station_id = self.entry.get()
         try:
+            if re.search(self._station_id_pattern, self._station_id, re.I|re.S):
+                raise ValueError
             (self._gui.station_config.STATION_TYPE,
              self._gui.station_config.STATION_NUMBER) = re.split('-', self._station_id)
             self._gui.create_station()

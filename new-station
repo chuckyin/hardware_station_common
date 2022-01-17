@@ -6,13 +6,14 @@ function make_station_run() {
 import test_station
 import station_config
 import hardware_station_common.factory_test_gui as gui
+import test_station.test_station_${PROJ_LOWER}_${STATION_LOWER} as test_station_${PROJ_LOWER}_${STATION_LOWER}
 
 # here we can override the station_config so that we don't have
 # to monkey with it in the build system
 station_config.load_station('${PROJ_LOWER}_${STATION_LOWER}')
 # we just have to pass in the TestStation constructor for this specific station
 # and the station_config
-FACTORY_TEST_GUI = gui.FactoryTestGui(station_config, test_station.${PROJ}${CLASS}Station)
+FACTORY_TEST_GUI = gui.FactoryTestGui(station_config, test_station_${PROJ_LOWER}_${STATION_LOWER}.${PROJ}${CLASS}Station)
 # enter the main loop
 FACTORY_TEST_GUI.main_loop()
 END
@@ -32,7 +33,7 @@ ROOT_DIR = r'C:\Oculus'
 # serial number codes
 #
 SERIAL_NUMBER_VALIDATION = False  # set to False for debugging
-SERIAL_NUMBER_MODEL_NUMBER = 'H'  # Fake model number requirement, need config
+SERIAL_NUMBER_MODEL_NUMBER = 'H'  # Fake model number requirement, need config. re.regex
 
 
 ##################################
@@ -43,6 +44,8 @@ SHOPFLOOR_SYSTEM = 'Foxlink'
 ENFORCE_SHOPFLOOR_ROUTING = False
 # does the shopfloor use work orders?
 USE_WORKORDER_ENTRY = True
+# dose the shopfloor-script should be loaded every test loop.
+SHOP_FLOOR_DBG = False
 
 ##################################
 # station hardware
@@ -51,13 +54,19 @@ USE_WORKORDER_ENTRY = True
 # (e.g. "DMM" vs "USB0::2391::1543::MY47007422::0::INSTR")
 ######## To be config per station type 
 
+################################
+# optimize
+# use multi-thread to save UI dead-lock.
+OPTIMIZE_UI_MODE = True
+# show console when running seperately.
+SHOW_CONSOLE = True
+# print all data to log-file
+IS_PRINT_TO_LOG = False
 
 #####
 ### Facebook_IT Enable boolean
 FACEBOOK_IT_ENABLED = False
 
-# does the shopfloor use work orders?
-USE_WORKORDER_ENTRY = False
 END
 
 }
@@ -84,7 +93,7 @@ function make_test_station() {
     cat > test_station/test_station_${PROJ_LOWER}_${STATION_LOWER}.py <<END
 import hardware_station_common.test_station.test_station as test_station
 import test_station.test_fixture.test_fixture_${PROJ_LOWER}_${STATION_LOWER} as test_fixture_${PROJ_LOWER}_${STATION_LOWER}
-import test_station.dut.dut_${PROJ_LOWER}_${STATION_LOWER} as dut
+import test_station.dut.dut_${PROJ_LOWER}_${STATION_LOWER} as dut_${PROJ_LOWER}_${STATION_LOWER}
 
 
 class ${PROJ}${CLASS}Error(Exception):
@@ -119,7 +128,7 @@ class ${PROJ}${CLASS}Station(test_station.TestStation):
         self._overall_result = False
         self._overall_errorcode = ''
 
-        the_unit = dut.${PROJ}${STATION_LOWER}Dut(serial_number, self._station_config, self._operator_interface)
+        the_unit = dut_${PROJ_LOWER}_${STATION_LOWER}.${PROJ}${STATION_LOWER}Dut(serial_number, self._station_config, self._operator_interface)
         self._operator_interface.print_to_console("Testing Unit %s\n" % the_unit.serial_number)
         try:
 
@@ -176,7 +185,7 @@ function make_test_equipment() {
 import hardware_station_common.test_station.test_equipment
 
 
-class ${PROJ}${CLASS}Fixture(hardware_station_common.test_station.test_equipment.TestEquipment):
+class ${PROJ}${CLASS}Equipment(hardware_station_common.test_station.test_equipment.TestEquipment):
     """
         class for ${PROJ} ${STATION_LOWER} Equipment
             this is for doing all the specific things necessary to interface with equipment
@@ -188,10 +197,10 @@ class ${PROJ}${CLASS}Fixture(hardware_station_common.test_station.test_equipment
         pass
 
     def initialize(self):
-        self._operator_interface.print_to_console("Initializing ${PROJ} ${STATION} Fixture\n")
+        self._operator_interface.print_to_console("Initializing ${PROJ} ${STATION} Equipment\n")
 
     def close(self):
-        self._operator_interface.print_to_console("Closing ${PROJ} ${STATION} Fixture\n")
+        self._operator_interface.print_to_console("Closing ${PROJ} ${STATION} Equipment\n")
 END
 
 }
@@ -247,6 +256,22 @@ if [ ! -d 'config' ]; then
     mkdir config
 fi
 
+if [ ! -d 'test_station' ]; then
+    mkdir test_station
+fi
+
+if [ ! -d 'test_station/test_fixture' ]; then
+    mkdir test_station/test_fixture
+fi
+
+if [ ! -d 'test_station/test_equipment' ]; then
+    mkdir test_station/test_equipment
+fi
+
+if [ ! -d 'test_station/dut' ]; then
+    mkdir test_station/dut
+fi
+
 echo "Generating ${PROJ_LOWER}_${STATION_LOWER}_run.py"
 make_station_run
 
@@ -273,7 +298,7 @@ echo "change test_station/__init__.py to unix style"
 dos2unix test_station/__init__.py
 echo "change test_station/__init__.py to 777 mode"
 chmod -c 777 test_station/__init__.py
-echo "from test_station_${PROJ_LOWER}_${STATION_LOWER} import ${PROJ}${CLASS}Station" >> test_station/__init__.py
+echo "# from test_station_${PROJ_LOWER}_${STATION_LOWER} import *" >> test_station/__init__.py
 
 echo
 echo "*** WARNING ***"
