@@ -67,6 +67,11 @@ IS_PRINT_TO_LOG = False
 ### Facebook_IT Enable boolean
 FACEBOOK_IT_ENABLED = False
 
+####
+###
+MIN_SPACE_REQUIRED = [('C:', 10240)]
+SW_TITLE = r'OMI TEST STATION'
+
 END
 
 }

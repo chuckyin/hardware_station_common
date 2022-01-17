@@ -340,6 +340,8 @@ class FactoryTestGui(object):
             self.update_workorder_display()
         elif sender == 'Offline':
             self.station_config.FACEBOOK_IT_ENABLED = not bool(e)
+        elif sender == 'AutoScan':
+            self.station_config.AUTO_SCAN_CODE = bool(e)
 
     def start_loop(self, sender, user_value):
         if not self.check_free_space_ready():
