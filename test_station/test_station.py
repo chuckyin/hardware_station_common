@@ -34,6 +34,14 @@ class TestStation(object):
         self.workorder = None
         self._overall_result = None
         self._first_failing_test_result = None
+        self._array = test_log.TestRecord.pre_load_limit(station_config)
+        for test_result in self._array:
+            name = test_result.get_test_name()
+            lsl = test_result._low_limit
+            usl = test_result._high_limit
+            err = test_result.get_unique_id()
+            if err > 0 and (lsl or usl):
+                self._operator_interface.update_test_item(name, lsl, usl, err)
 
     def initialize(self):
         """ Initialize test station
@@ -54,7 +62,7 @@ class TestStation(object):
         """
         test_logs_directory = os.path.join(self._station_config.ROOT_DIR, "factory-test_logs")
         station_id = ("%s-%s" % (self._station_config.STATION_TYPE, self._station_config.STATION_NUMBER))
-        sorted_export_log = True
+        sorted_export_log = False
         if hasattr(self._station_config, 'SORTED_EXPORT_LOG'):
             sorted_export_log = self._station_config.SORTED_EXPORT_LOG
         testlog = test_log.TestRecord(serial_num, logs_dir=test_logs_directory, station_id=("%s" % station_id),
@@ -62,7 +70,9 @@ class TestStation(object):
         if self.workorder is not None:
             testlog.set_user_metadata_dict({'work_order': self.workorder})  # add work order to log file
         self._operator_interface.print_to_console("Checking Unit %s...\n" % serial_num)
-        testlog.load_limits(self._station_config)
+        # testlog.load_limits(self._station_config)
+        for test_result in self._array:
+            testlog.add_result(test_result)
 
         # Here's where the specialized station code is called:
         ok_to_test_res = testlog.ok_to_test(serial_num)

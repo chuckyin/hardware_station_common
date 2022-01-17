@@ -40,6 +40,7 @@ class ShopFloor(object):
                 print('Fail to initialised shop_floor: {0}, {1}'.format(station_config.SHOPFLOOR_SYSTEM, py))
                 ShopFloor._floor = False
 
+
     def ok_to_test(self, serial_number):
         """
         Query Shop Floor System To Determine if a given Unit is Ok To Be Tested

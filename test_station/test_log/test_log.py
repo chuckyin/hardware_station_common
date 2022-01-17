@@ -172,10 +172,7 @@ class TestRecord(object):
         return self._unique_instance_id
 
     def _sort_test_results_by(self):
-        if not self._sorted_export_log:
-            return self._results_array.values()
-        return sorted(self._results_array.values(),
-                      key=lambda t: (t.measurement_time, t._unique_id) if t.measurement_time else (datetime.now(), t._unique_id))
+        return self._results_array.values()
 
     def calculate_overall_result(self):
         '''Callers should use the GetOverallResult() and GetOverallErrorCode functions instead.
@@ -357,7 +354,8 @@ class TestRecord(object):
 
     def set_measured_value_by_name(self, test_name, measured_value):
         result = self.get_test_by_name(test_name)
-        return result.set_measured_value(measured_value)
+        res = result.set_measured_value(measured_value)
+        return res
 
     def load_limits(self, station_config):
         """
@@ -368,12 +366,23 @@ class TestRecord(object):
         """
 
         # allow running of test_log standalone for module testing.
+        items = TestRecord.pre_load_limit(station_config)
+        for test_result in items:
+            self.add_result(test_result)
+
+    @staticmethod
+    def pre_load_limit(station_config):
         if station_config is None:
             return
+
         global STATION_LIMITS  # from station_limits_file
+        #  add by elton:1028/2019
+        config_path = os.getcwd()
+        if os.path.exists(station_config.__file__):
+            config_path = os.path.dirname(station_config.__file__)
         station_limits_file = os.path.join(
-            os.path.dirname(station_config.__file__), 'config', ('station_limits_' + station_config.STATION_TYPE + '.py'))
-        # print(station_limits_file)
+            config_path, 'config', ('station_limits_' + station_config.STATION_TYPE + '.py'))
+        print(station_limits_file)
         try:
             exec(open(station_limits_file).read(), globals(), locals())# imports station_limits into current namespace
             # also provides "self" and "station_config" to station_limits_file
@@ -383,14 +392,13 @@ class TestRecord(object):
         ids = [limit['unique_id'] for limit in STATION_LIMITS]
         if len(ids) != len(set(ids)):
             raise TestLimitsError("error codes are not unique!")
+        test_record_items = []
         for station_limit in STATION_LIMITS:
             # ['name','low_limit', 'high_limit', 'uniqe_id']
             test_result = TestResult(name=station_limit['name'], low_limit=station_limit['low_limit'],
                                      high_limit=station_limit['high_limit'], unique_id=station_limit['unique_id'])
-            try:
-                self.add_result(test_result)
-            except:
-                raise
+            test_record_items.append(test_result)
+        return test_record_items
 
 NO_ERROR_CODE_REGISTERED = -1
 TEST_PASSED_CODE = 0
@@ -411,7 +419,6 @@ class TestResult(object):
         self._numeric_error_code = -1   # -1 is no code. 0 is passed.  other is an error.
         self._measured_value = None
         self._did_pass = False
-        self.measurement_time = None
         # HACKED LIMITS:
         # can only spec limits in init.
         # can't pick comptype.  Options are <= hilim and/or >= lolim
@@ -459,8 +466,6 @@ class TestResult(object):
 
     def set_measured_value(self, value):
         self._measured_value = value
-        # print ("DEBUG: (%s) recording value %s" % (self._test_name, value))
-        self.measurement_time = datetime.now()
         low_ok = False
         no_test_done = True
 
@@ -471,7 +476,7 @@ class TestResult(object):
             else:
                 no_test_done = False
                 if value < self._low_limit:
-                    self.set_error_code(FAIL_MEASURED_VALUE_TOO_LOW)  # handles the didPass as well
+                    # self.set_error_code(FAIL_MEASURED_VALUE_TOO_LOW)  # handles the didPass as well
                     low_ok = False
                 else:
                     low_ok = True
@@ -480,7 +485,7 @@ class TestResult(object):
             else:
                 no_test_done = False
                 if value > self._high_limit:
-                    self.set_error_code(FAIL_MEASURED_VALUE_TOO_HIGH)  # handles the didPass as well
+                    # self.set_error_code(FAIL_MEASURED_VALUE_TOO_HIGH)  # handles the didPass as well
                     high_ok = False
                 else:
                     high_ok = True
@@ -504,11 +509,6 @@ class TestResult(object):
 
     def get_measured_value(self):
         return self._measured_value
-
-    def get_measurement_timestamp(self):
-        if self.measurement_time is None:
-            self.measurement_time = datetime.now()
-        return utils.io_utils.timestamp(self.measurement_time)
 
     def set_unique_id(self, unique_id):
         self._unique_id = unique_id
@@ -597,7 +597,7 @@ class TestResult(object):
                 # In the case where we're printing the full results, the header is just 'MeasuredVal'
                 csv_line = self._test_name
             else:
-                csv_line = ("Index, TestName, MeasuredVal, LoLim, HiLim, Timestamp, Result, ErrorCode")
+                csv_line = ("Index, TestName, MeasuredVal, LoLim, HiLim, Result, ErrorCode")
         else:
 
             # Processing of MeasuredValue is common to both paths:
@@ -630,20 +630,17 @@ class TestResult(object):
                         high = make_printable(self._high_limit)
                     else:
                         high = ' '
-                    time = self.get_measurement_timestamp()
                     pass_fail = '(LOG)'
                 else:
                     low = make_printable(self._low_limit)
                     high = make_printable(self._high_limit)
-                    time = self.get_measurement_timestamp()
                     pass_fail = self.get_pass_fail_string()
 
-                csv_line = ("%d, %s, %s, %s, %s, %s, %s, %s" % (test_index,
+                csv_line = ("%d, %s, %s, %s, %s, %s, %s" % (test_index,
                                                                 name,
                                                                 val,
                                                                 low,
                                                                 high,
-                                                                time,
                                                                 pass_fail,
                                                                 error))
 

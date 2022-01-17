@@ -7,14 +7,24 @@ import time
 import datetime
 from hardware_station_common import utils
 
+import clr
+clr.AddReference('AgLib')
+clr.AddReference('Util')
+clr.AddReference('Xceed.Wpf.Toolkit')
+
+clr.AddReference("PresentationFramework.Classic, Version=3.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35")
+clr.AddReference("PresentationCore, Version=3.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35")
+from System.Windows import Application, Window
+from System.Threading import Thread, ApartmentState, ThreadStart
+from System import Action, Delegate
+
 class OperatorInterfaceError(Exception):
     pass
 
 
 class OperatorInterface(object):
-    def __init__(self, station_config, console, prompt, log_to_file=True):
+    def __init__(self, station_config, console, log_to_file=True):
         self._console = console
-        self._prompt = prompt
         self._debug_log = log_to_file
         if log_to_file:
             self._debug_log_dir = os.path.join(station_config.ROOT_DIR, "factory-test_debug")
@@ -28,24 +38,39 @@ class OperatorInterface(object):
                 raise
 
     def prompt(self, msg, color=None):
-        self._prompt.config(text=(msg))
-        if color is not None:
-            self._prompt.config(bg=color)
-        self._prompt.update()
+        pass
+        # self._prompt.config(text=(msg))
+        # if color is not None:
+        #     self._prompt.config(bg=color)
+        # self._prompt.update()
 
     def print_to_console(self, msg, color=None):
-        self._console.print_msg('[{0}]: '.format(utils.io_utils.timestamp()) + msg)
-        if color is not None:
-            self._console.set_bg(color)
+        # self._console.print_msg('[{0}]: '.format(utils.io_utils.timestamp()) + msg)
+        # if color is not None:
+        #     self._console.set_bg(color)
+        msg = msg.rstrip('\n')
+        if color in ['red', 'blue']:
+            self._console.UpdateTestLogs(msg, 2)
+        else:
+            self._console.UpdateTestLogs(msg, 0)
         if self._debug_log:
             # self._debug_log_obj.write('[{0}]: '.format(utils.io_utils.timestamp()) + msg)
             self._debug_log_obj.write('[{0}]: '.format(datetime.datetime.now().strftime("%Y%m%d-%H%M%S.%f")) + msg)
             self._debug_log_obj.flush()
 
-    def clear_console(self):
-        self._console.clear()
-        if self._debug_log:
+    def update_test_item(self, item_name, lsl, usl, errcode):
+        self._console.UpdateTestItem(item_name, str(lsl), str(usl), str(errcode))
 
+    def update_test_value(self, item_name, val, result):
+        self._console.UpdateTestValue(item_name, str(val), int(result))
+
+    def clear_test_values(self):
+        self._console.InitialiseTestValue()
+
+    def clear_console(self):
+        # self._console.clear()
+        self._console.ClearTestLogs()
+        if self._debug_log:
             self._debug_log_obj.close()
             self._debug_file_name = os.path.join(self._debug_log_dir, utils.io_utils.timestamp() + "_debug.log")
 #            self._debug_log_obj = open(self._debug_file_name, 'w', 0)  # use unbuffered file for writing debug info
@@ -72,9 +97,10 @@ class OperatorInterface(object):
         :param rationale:
         :return:
         """
-        self._console.print_msg(rationale)
-        self._prompt.update()
+        # self._console.print_msg(rationale)
+        # self._prompt.update()
         time.sleep(pause_seconds)
 
     def display_image(self, image_file):
-        utils.gui_utils.ImageDisplayBox.display(image_file)
+        # utils.gui_utils.ImageDisplayBox.display(image_file)
+        pass
