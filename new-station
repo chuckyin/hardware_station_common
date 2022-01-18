@@ -7,15 +7,18 @@ import test_station
 import station_config
 import hardware_station_common.factory_test_gui as gui
 import test_station.test_station_${PROJ_LOWER}_${STATION_LOWER} as test_station_${PROJ_LOWER}_${STATION_LOWER}
+import multiprocessing as mp
 
-# here we can override the station_config so that we don't have
-# to monkey with it in the build system
-station_config.load_station('${PROJ_LOWER}_${STATION_LOWER}')
-# we just have to pass in the TestStation constructor for this specific station
-# and the station_config
-FACTORY_TEST_GUI = gui.FactoryTestGui(station_config, test_station_${PROJ_LOWER}_${STATION_LOWER}.${PROJ}${CLASS}Station)
-# enter the main loop
-FACTORY_TEST_GUI.main_loop()
+if __name__ == '__main__':
+    mp.freeze_support()
+    # here we can override the station_config so that we don't have
+    # to monkey with it in the build system
+    station_config.load_station('${PROJ_LOWER}_${STATION_LOWER}')
+    # we just have to pass in the TestStation constructor for this specific station
+    # and the station_config
+    FACTORY_TEST_GUI = gui.FactoryTestGui(station_config, test_station_${PROJ_LOWER}_${STATION_LOWER}.${PROJ}${CLASS}Station)
+    # enter the main loop
+    FACTORY_TEST_GUI.main_loop()
 END
 }
 
@@ -35,6 +38,11 @@ ROOT_DIR = r'C:\Oculus'
 SERIAL_NUMBER_VALIDATION = False  # set to False for debugging
 SERIAL_NUMBER_MODEL_NUMBER = 'H'  # Fake model number requirement, need config. re.regex
 
+# station_type
+# STATION_TYPE = 'project_station'
+# STATION_NUMBER = 10001
+# FULL_TREE_UI = False
+#
 
 ##################################
 # shopfloor

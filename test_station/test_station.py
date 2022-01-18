@@ -40,7 +40,9 @@ class TestStation(object):
             lsl = test_result._low_limit
             usl = test_result._high_limit
             err = test_result.get_unique_id()
-            if err > 0 and (lsl or usl):
+            if hasattr(station_config, 'FULL_TREE_UI') and station_config.FULL_TREE_UI:
+                self._operator_interface.update_test_item(name, lsl, usl, err)
+            elif err > 0 and (lsl or usl):  # not Full Tree UI
                 self._operator_interface.update_test_item(name, lsl, usl, err)
 
     def initialize(self):
