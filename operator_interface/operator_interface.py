@@ -17,17 +17,18 @@ clr.AddReference("PresentationCore, Version=3.0.0.0, Culture=neutral, PublicKeyT
 from System.Windows import Application, Window
 from System.Threading import Thread, ApartmentState, ThreadStart
 from System import Action, Delegate
+from System.Collections.Generic import Dictionary
 
 class OperatorInterfaceError(Exception):
     pass
 
 
 class OperatorInterface(object):
-    def __init__(self, station_config, console, log_to_file=True):
+    def __init__(self, gui, console, log_dir):
         self._console = console
-        self._debug_log = log_to_file
-        if log_to_file:
-            self._debug_log_dir = os.path.join(station_config.ROOT_DIR, "factory-test_debug")
+        self._gui = gui
+        if log_dir:
+            self._debug_log_dir = log_dir
             if not os.path.isdir(self._debug_log_dir):
                 utils.os_utils.mkdir_p(self._debug_log_dir)
             self._debug_file_name = os.path.join(self._debug_log_dir, utils.io_utils.timestamp() + "_debug.log")
@@ -53,10 +54,10 @@ class OperatorInterface(object):
             self._console.UpdateTestLogs(msg, 2)
         else:
             self._console.UpdateTestLogs(msg, 0)
-        if self._debug_log:
-            # self._debug_log_obj.write('[{0}]: '.format(utils.io_utils.timestamp()) + msg)
-            self._debug_log_obj.write('[{0}]: '.format(datetime.datetime.now().strftime("%Y%m%d-%H%M%S.%f")) + msg)
-            self._debug_log_obj.flush()
+
+        # self._debug_log_obj.write('[{0}]: '.format(utils.io_utils.timestamp()) + msg)
+        self._debug_log_obj.write('[{0}]: '.format(datetime.datetime.now().strftime("%Y%m%d-%H%M%S.%f")) + msg)
+        self._debug_log_obj.flush()
 
     def update_test_item(self, item_name, lsl, usl, errcode):
         self._console.UpdateTestItem(item_name, str(lsl), str(usl), str(errcode))
@@ -70,15 +71,14 @@ class OperatorInterface(object):
     def clear_console(self):
         # self._console.clear()
         self._console.ClearTestLogs()
-        if self._debug_log:
-            self._debug_log_obj.close()
-            self._debug_file_name = os.path.join(self._debug_log_dir, utils.io_utils.timestamp() + "_debug.log")
+
+        self._debug_log_obj.close()
+        self._debug_file_name = os.path.join(self._debug_log_dir, utils.io_utils.timestamp() + "_debug.log")
 #            self._debug_log_obj = open(self._debug_file_name, 'w', 0)  # use unbuffered file for writing debug info
-            self._debug_log_obj = open(self._debug_file_name, 'w')  # use unbuffered file for writing debug info
+        self._debug_log_obj = open(self._debug_file_name, 'w')  # use unbuffered file for writing debug info
 
     def close(self):
-        if self._debug_log:
-            self._debug_log_obj.close()
+        self._debug_log_obj.close()
 
     def operator_input(self, title=None, msg=None, msg_type='info'):
         if msg_type == 'info':
@@ -104,3 +104,15 @@ class OperatorInterface(object):
     def display_image(self, image_file):
         # utils.gui_utils.ImageDisplayBox.display(image_file)
         pass
+
+    def update_root_config(self, dic):
+        clrdict = Dictionary[str, str]()
+        for k,v in dic.items():
+            clrdict[k] = v
+        self._console.Config(clrdict)
+
+    def active_start_loop(self, serial_number):
+        self.update_root_config({'SN': serial_number})
+        self._console.MovFocusToSn()
+        self._console.StartLoop()
+

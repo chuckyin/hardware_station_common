@@ -107,7 +107,7 @@ class FactoryTestGui(object):
             # report counts to the user
             msg = "completed %d of %d loops.  %d passed" % (self._g_num_loops_completed,
                                                             self._g_target_num_loops, self._g_num_passing_loops)
-            self.update_root_config({'Hint': msg})
+            self._operator_interface.update_root_config({'Hint': msg})
 
             time.sleep(1)
 
@@ -179,7 +179,7 @@ class FactoryTestGui(object):
             self._operator_interface.print_to_console("Initialization complete.\n")
             self.root.IsEnabled = True
             self._operator_interface.print_to_console("waiting for sn\n")
-            self.update_root_config({'Hint': "Scan or type the DUT Serial Number"})
+            self._operator_interface.update_root_config({'Hint': "Scan or type the DUT Serial Number"})
         else:
             # self._sn_entry.config(state='disabled')
             # then we'll drop back int mainloop(), but our controls are disabled.
@@ -219,15 +219,9 @@ class FactoryTestGui(object):
     #     else:
     #         Application.Current.Dispatcher.Invoke(Action[bool](self.set_running_status), status)
 
-    def update_root_config(self, dic):
-        clrdict = Dictionary[str, str]()
-        for k,v in dic.items():
-            clrdict[k] = v
-        self._vm_main_view_model.Config(clrdict)
-
     def run_test(self, serial_number):
         # self.set_running_status(True)
-        self.update_root_config({'IsBusy': 'True', 'Hint': ''})
+        self._operator_interface.update_root_config({'IsBusy': 'True', 'Hint': ''})
         self._operator_interface.print_to_console (f'SERINAL_NUMBER:{serial_number}\n')
 
         if self.is_looping_enabled():
@@ -237,11 +231,11 @@ class FactoryTestGui(object):
             time.sleep(1)
             self._operator_interface.clear_console()
             self._operator_interface.clear_test_values()
-            self.update_root_config({'FinalResult': '', 'Hint': '', 'ResultMsg': ''})
+            self._operator_interface.update_root_config({'FinalResult': '', 'Hint': '', 'ResultMsg': ''})
             self.test_iteration(serial_number)
         gc.collect()
 
-        self.update_root_config({'IsBusy': 'False', 'SN': '', 'Hint': "Scan or the type DUT Serial Number"})
+        self._operator_interface.update_root_config({'IsBusy': 'False', 'SN': '', 'Hint': "Scan or the type DUT Serial Number"})
         self._vm_main_view_model.MovFocusToSn()
         # Application.Current.Dispatcher.Invoke(Action(self.reset_running_status))
 
@@ -298,12 +292,12 @@ class FactoryTestGui(object):
         result_message += "\n-----------------------------------\n"
         result_message += "\n\n"
         if did_pass:
-            self.update_root_config({
+            self._operator_interface.update_root_config({
                 'FinalResult': 'OK',
                 'ResultMsg': ''})
             self._operator_interface.print_to_console(result_message)
         else:
-            self.update_root_config({
+            self._operator_interface.update_root_config({
                 'FinalResult': 'NG',
                 'ResultMsg': error_code})
             self._operator_interface.print_to_console(result_message)
@@ -317,7 +311,7 @@ class FactoryTestGui(object):
             raise
 
     def update_workorder(self):
-        self.update_root_config({'WorkOrder': self.g_workorder})
+        self._operator_interface.update_root_config({'WorkOrder': self.g_workorder})
 
     @staticmethod
     def parse_arguments():
@@ -336,6 +330,8 @@ class FactoryTestGui(object):
         if sender == 'Browser':
             import subprocess
             subprocess.Popen(rf'explorer "{self.station_config.ROOT_DIR}"')
+        elif sender == "Active":
+            self.station_config.Active = bool(e)
         elif sender == "WO":
             self.update_workorder_display()
         elif sender == 'Offline':
@@ -343,13 +339,13 @@ class FactoryTestGui(object):
         elif sender == 'AutoScan':
             self.station_config.AUTO_SCAN_CODE = bool(e)
 
-    def start_loop(self, sender, user_value):
+    def start_loop(self, user_value):
         if not self.check_free_space_ready():
             return
         try:
             self._operator_interface.clear_console()
             self._operator_interface.clear_test_values()
-            self.update_root_config({'FinalResult': '', 'Hint': '', 'ResultMsg': ''})
+            self._operator_interface.update_root_config({'FinalResult': '', 'Hint': '', 'ResultMsg': ''})
 
             self.station.validate_sn(user_value)
             if self.is_looping_enabled():
@@ -367,13 +363,14 @@ class FactoryTestGui(object):
     def AppStartUp(self, sender, e):
         self.root = MainWindow()
 
-        self.root.Title = "TEST_STATION-000"
+        self.root.Title = "Please scan test_station id !!!!"
         self.root.Show()
         self.root.IsEnabled = False
         self.root.MuAction += self.mu_action
-        self.root.MuStartLoop += self.start_loop
+
         self._vm_locator = ViewModelLocator.Instance
         self._vm_main_view_model = ViewModelLocator.Instance.Main
+        self._vm_main_view_model.MuStartLoop += self.start_loop
 
         # version info
         init_config = {}
@@ -387,11 +384,14 @@ class FactoryTestGui(object):
         if hasattr(self.station_config, 'SW_TITLE'):
             init_config['SwTitle'] = self.station_config.SW_TITLE
         init_config['Offline'] = str(not self.station_config.FACEBOOK_IT_ENABLED)
+        init_config['Active'] = 'True'
+        if hasattr(self.station_config, 'Active'):
+            init_config['Active'] = str(self.station_config.Active)
 
-        self.update_root_config(init_config)
+        log_dir = os.path.join(self.station_config.ROOT_DIR, "factory-test_debug")
+        self._operator_interface = operator_interface.OperatorInterface(self, self._vm_main_view_model, log_dir)
 
-        self._operator_interface = operator_interface.OperatorInterface(
-            self.station_config,  self._vm_main_view_model, log_to_file=True)
+        self._operator_interface.update_root_config(init_config)
 
         self._vm_main_view_model.ShowWorkOrder = True if self.station_config.USE_WORKORDER_ENTRY else False
         if self.station_config.STATION_NUMBER == 0:
