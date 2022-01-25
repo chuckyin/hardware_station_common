@@ -72,9 +72,7 @@ class TestStation(object):
         if self.workorder is not None:
             testlog.set_user_metadata_dict({'work_order': self.workorder})  # add work order to log file
         self._operator_interface.print_to_console("Checking Unit %s...\n" % serial_num)
-        # testlog.load_limits(self._station_config)
-        for test_result in self._array:
-            testlog.add_result(test_result)
+        testlog.load_limits(self._station_config)
 
         # Here's where the specialized station code is called:
         ok_to_test_res = testlog.ok_to_test(serial_num)

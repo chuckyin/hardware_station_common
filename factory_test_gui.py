@@ -231,7 +231,8 @@ class FactoryTestGui(object):
             time.sleep(1)
             self._operator_interface.clear_console()
             self._operator_interface.clear_test_values()
-            self._operator_interface.update_root_config({'FinalResult': '', 'Hint': '', 'ResultMsg': ''})
+            self._operator_interface.update_root_config(
+                {'FinalResult': '', 'Hint': '', 'ResultMsg': '', 'ResultMsgEx': ''})
             self.test_iteration(serial_number)
         gc.collect()
 
@@ -307,6 +308,8 @@ class FactoryTestGui(object):
         try:
             self._operator_interface.print_to_console('Station Type: %s\n' % self.station_config.STATION_TYPE)
             self.station = self._test_station_init(self.station_config, self._operator_interface)
+            station_id = (f'{self.station_config.STATION_TYPE}_{self.station_config.STATION_NUMBER}')
+            self.root.Title = "Oculus HWTE " + station_id
         except:
             raise
 
@@ -331,7 +334,7 @@ class FactoryTestGui(object):
             import subprocess
             subprocess.Popen(rf'explorer "{self.station_config.ROOT_DIR}"')
         elif sender == "Active":
-            self.station_config.Active = bool(e)
+            self.station_config.IS_STATION_ACTIVE = bool(e)
         elif sender == "WO":
             self.update_workorder_display()
         elif sender == 'Offline':
@@ -340,12 +343,13 @@ class FactoryTestGui(object):
             self.station_config.AUTO_SCAN_CODE = bool(e)
 
     def start_loop(self, user_value):
-        if not self.check_free_space_ready():
+        if not self.station_config.IS_STATION_ACTIVE or not self.check_free_space_ready():
             return
         try:
             self._operator_interface.clear_console()
             self._operator_interface.clear_test_values()
-            self._operator_interface.update_root_config({'FinalResult': '', 'Hint': '', 'ResultMsg': ''})
+            self._operator_interface.update_root_config(
+                {'FinalResult': '', 'Hint': '', 'ResultMsg': '', 'ResultMsgEx': ''})
 
             self.station.validate_sn(user_value)
             if self.is_looping_enabled():
@@ -386,7 +390,7 @@ class FactoryTestGui(object):
         init_config['Offline'] = str(not self.station_config.FACEBOOK_IT_ENABLED)
         init_config['Active'] = 'True'
         if hasattr(self.station_config, 'Active'):
-            init_config['Active'] = str(self.station_config.Active)
+            init_config['Active'] = str(self.station_config.IS_STATION_ACTIVE)
 
         log_dir = os.path.join(self.station_config.ROOT_DIR, "factory-test_debug")
         self._operator_interface = operator_interface.OperatorInterface(self, self._vm_main_view_model, log_dir)
@@ -394,7 +398,7 @@ class FactoryTestGui(object):
         self._operator_interface.update_root_config(init_config)
 
         self._vm_main_view_model.ShowWorkOrder = True if self.station_config.USE_WORKORDER_ENTRY else False
-        if self.station_config.STATION_NUMBER == 0:
+        if int(self.station_config.STATION_NUMBER) == 0:
             self.update_stationtype_display()
         else:
             self.create_station()
@@ -417,9 +421,6 @@ class FactoryTestGui(object):
             # FIRST THINGS FIRST: Figure out our station type
             # keep init of all the station config values up here
             # to make it clear which settings are coming in from there.
-            station_num = self.station_config.STATION_NUMBER
-            station_id = ("%s-%d" % (self.station_config.STATION_TYPE, station_num))
-            window_title = "Oculus HWTE " + station_id
 
             self._g_num_loops_completed = 0
             self._g_num_passing_loops = 0

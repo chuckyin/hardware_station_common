@@ -202,7 +202,7 @@ class TestRecord(object):
 
     def end_test(self):
         self._end_time = datetime.now()
-        final_result = self.calculate_overall_result()
+        final_result = self.get_overall_result()
 
         # cram the pass/fail result onto the filename
         result_suffix = '_F.log'

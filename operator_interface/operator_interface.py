@@ -46,16 +46,14 @@ class OperatorInterface(object):
         # self._prompt.update()
 
     def print_to_console(self, msg, color=None):
-        # self._console.print_msg('[{0}]: '.format(utils.io_utils.timestamp()) + msg)
-        # if color is not None:
-        #     self._console.set_bg(color)
-        msg = msg.rstrip('\n')
-        if color in ['red', 'blue']:
-            self._console.UpdateTestLogs(msg, 2)
+        color_map = {
+            'blue': 1,
+            'red': 2,
+        }
+        if color in color_map:
+            self._console.UpdateTestLogs(msg.rstrip('\n'), color_map[color])
         else:
-            self._console.UpdateTestLogs(msg, 0)
-
-        # self._debug_log_obj.write('[{0}]: '.format(utils.io_utils.timestamp()) + msg)
+            self._console.UpdateTestLogs(msg.rstrip('\n'), 0)
         self._debug_log_obj.write('[{0}]: '.format(datetime.datetime.now().strftime("%Y%m%d-%H%M%S.%f")) + msg)
         self._debug_log_obj.flush()
 

@@ -55,3 +55,9 @@ def datestamp(datetime_object=None):
     if datetime_object is None:
         datetime_object = datetime.datetime.now()
     return datetime_object.strftime("%Y%m%d")
+
+def round_ex(number, ndigits, rounding='ROUND_HALF_UP'):
+    if rounding == 'ROUND_HALF_UP':
+        return round(number * (10 ** ndigits)) / float(10 ** ndigits)
+    elif rounding == 'ROUND_HALF_EVEN':
+        return round(number, ndigits)
