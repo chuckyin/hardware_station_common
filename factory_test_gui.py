@@ -270,15 +270,12 @@ class FactoryTestGui(object):
         self.root.Close()
 
     def gui_show_result(self, serial_number, overall_result, first_failed_test_result=None):
-
-        result_message = "\n-----------------------------------\n"
+        self._operator_interface.print_to_console('-----------------------------------\n')
         did_pass = False
         if overall_result:
-            result_message += "\nUnit [ {0} ] Passed!\n".format(serial_number)
             did_pass = True
             error_code = '[0]'
         else:
-            result_message += "\nUnit [ {0} ] Failed!\n".format(serial_number)
             if first_failed_test_result is None:
                 error_code = "(unknown)"
             else:
@@ -286,22 +283,16 @@ class FactoryTestGui(object):
                     first_failed_test_result.get_unique_id(),
                     first_failed_test_result.get_error_code_as_string())
 
-        result_message += "\n-----------------------------------\n"
-        result_message += "Error Code = {0}\n".format(error_code)
-        if not overall_result and first_failed_test_result is not None:
-            result_message += first_failed_test_result.s_print_csv()
-        result_message += "\n-----------------------------------\n"
-        result_message += "\n\n"
         if did_pass:
             self._operator_interface.update_root_config({
                 'FinalResult': 'OK',
                 'ResultMsg': ''})
-            self._operator_interface.print_to_console(result_message)
+            self._operator_interface.print_to_console(f'Unit {serial_number} OK\n')
         else:
             self._operator_interface.update_root_config({
                 'FinalResult': 'NG',
                 'ResultMsg': error_code})
-            self._operator_interface.print_to_console(result_message)
+            self._operator_interface.print_to_console(f'Unit {serial_number} NG, Errcode = {error_code}\n')
         self.update_loop_counter(did_pass)
 
     def create_station(self):
