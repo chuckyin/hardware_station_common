@@ -33,17 +33,12 @@ class OperatorInterface(object):
                 utils.os_utils.mkdir_p(self._debug_log_dir)
             self._debug_file_name = os.path.join(self._debug_log_dir, utils.io_utils.timestamp() + "_debug.log")
             try:
-                #self._debug_log_obj = open(self._debug_file_name, 'w', 0)  # use unbuffered file for writing debug info
                 self._debug_log_obj = open(self._debug_file_name, 'w')  # use unbuffered file for writing debug info
             except:
                 raise
 
     def prompt(self, msg, color=None):
         pass
-        # self._prompt.config(text=(msg))
-        # if color is not None:
-        #     self._prompt.config(bg=color)
-        # self._prompt.update()
 
     def print_to_console(self, msg, color=None):
         color_map = {
@@ -79,14 +74,17 @@ class OperatorInterface(object):
         self._debug_log_obj.close()
 
     def operator_input(self, title=None, msg=None, msg_type='info'):
-        if msg_type == 'info':
-            utils.gui_utils.MessageBox.info(title, msg)
-        elif msg_type == 'warning':
-            utils.gui_utils.MessageBox.warning(title, msg)
-        elif msg_type == 'error':
-            utils.gui_utils.MessageBox.error(title, msg)
+        if Application.Current.Dispatcher.CheckAccess():
+            if msg_type == 'info':
+                utils.gui_utils.MessageBox.info(title, msg)
+            elif msg_type == 'warning':
+                utils.gui_utils.MessageBox.warning(title, msg)
+            elif msg_type == 'error':
+                utils.gui_utils.MessageBox.error(title, msg)
+            else:
+                raise OperatorInterfaceError("undefined operator input type!")
         else:
-            raise OperatorInterfaceError("undefined operator input type!")
+            Application.Current.Dispatcher.Invoke(Action[str, str, str](self.operator_input), title, msg, msg_type)
 
     def wait(self, pause_seconds, rationale=None):
         """
@@ -95,13 +93,13 @@ class OperatorInterface(object):
         :param rationale:
         :return:
         """
-        # self._console.print_msg(rationale)
-        # self._prompt.update()
-        time.sleep(pause_seconds)
+        pass
 
     def display_image(self, image_file):
-        # utils.gui_utils.ImageDisplayBox.display(image_file)
-        pass
+        if Application.Current.Dispatcher.CheckAccess():
+            utils.gui_utils.ImageDisplayBox.display(image_file)
+        else:
+            Application.Current.Dispatcher.Invoke(Action[str](self.display_image), image_file)
 
     def update_root_config(self, dic):
         clrdict = Dictionary[str, str]()

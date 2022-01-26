@@ -350,7 +350,9 @@ class FactoryTestGui(object):
             self.station.is_ready()
             self.thread_it(self.run_test, user_value)
         except test_station.test_station.TestStationSerialNumberError as teststationerror:
-            self._operator_interface.operator_input(msg="%s" % str(teststationerror), msg_type='error')
+            self._operator_interface.print_to_console(msg="%s" % str(teststationerror), color='red')
+        except Exception as e:
+            self._operator_interface.operator_input(msg="Exception: %s" % str(e), msg_type='error')
         finally:
             self._operator_interface.print_to_console("waiting for sn\n")
             self._g_loop_sn = None
