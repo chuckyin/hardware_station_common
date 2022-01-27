@@ -6,6 +6,7 @@ import os
 import time
 import datetime
 from hardware_station_common import utils
+import json
 
 import clr
 clr.AddReference('AgLib')
@@ -54,6 +55,9 @@ class OperatorInterface(object):
 
     def update_test_item(self, item_name, lsl, usl, errcode):
         self._console.UpdateTestItem(item_name, str(lsl), str(usl), str(errcode))
+
+    def update_test_item_array(self, items):
+        self._console.UpdateTestItem(json.dumps(items))
 
     def update_test_value(self, item_name, val, result):
         self._console.UpdateTestValue(item_name, str(val), int(result))

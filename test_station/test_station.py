@@ -35,15 +35,19 @@ class TestStation(object):
         self._overall_result = None
         self._first_failing_test_result = None
         self._array = test_log.TestRecord.pre_load_limit(station_config)
+
+        test_items = []
         for test_result in self._array:
             name = test_result.get_test_name()
             lsl = test_result._low_limit
             usl = test_result._high_limit
             err = test_result.get_unique_id()
-            if hasattr(station_config, 'FULL_TREE_UI') and station_config.FULL_TREE_UI:
-                self._operator_interface.update_test_item(name, lsl, usl, err)
-            elif err > 0 and (lsl or usl):  # not Full Tree UI
-                self._operator_interface.update_test_item(name, lsl, usl, err)
+            if (hasattr(station_config, 'FULL_TREE_UI') and station_config.FULL_TREE_UI
+                    or (err > 0 and (lsl or usl))):
+               test_items.append({
+                   'Item': name, 'Errcode': err, 'Lsl': lsl, 'Usl': usl
+               })
+        self._operator_interface.update_test_item_array(test_items)
 
     def initialize(self):
         """ Initialize test station
