@@ -77,18 +77,18 @@ class OperatorInterface(object):
     def close(self):
         self._debug_log_obj.close()
 
-    def operator_input(self, title=None, msg=None, msg_type='info'):
+    def operator_input(self, title=None, msg=None, msg_type='info', msgbtn=0):
         if Application.Current.Dispatcher.CheckAccess():
             if msg_type == 'info':
-                utils.gui_utils.MessageBox.info(title, msg)
+                return utils.gui_utils.MessageBox.info(title, msg, msgbtn)
             elif msg_type == 'warning':
-                utils.gui_utils.MessageBox.warning(title, msg)
+                return utils.gui_utils.MessageBox.warning(title, msg, msgbtn)
             elif msg_type == 'error':
-                utils.gui_utils.MessageBox.error(title, msg)
+                return utils.gui_utils.MessageBox.error(title, msg, msgbtn)
             else:
                 raise OperatorInterfaceError("undefined operator input type!")
         else:
-            Application.Current.Dispatcher.Invoke(Action[str, str, str](self.operator_input), title, msg, msg_type)
+            Application.Current.Dispatcher.Invoke(Action[str, str, str, int](self.operator_input), title, msg, msg_type, msgbtn)
 
     def wait(self, pause_seconds, rationale=None):
         """

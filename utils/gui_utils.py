@@ -17,16 +17,16 @@ from Hsc import ImageDisplayBox as imgDispBox
 
 class MessageBox(object):
     @classmethod
-    def warning(cls, title=None, msg=None):
-        WPFMessageBox.Show(msg, title, 0, 48)
+    def warning(cls, title=None, msg=None, msgbtn=0):
+        WPFMessageBox.Show(msg, title, msgbtn, 48)
 
     @classmethod
-    def error(cls, title=None, msg=None):
-        WPFMessageBox.Show(msg, title, 0, 16)
+    def error(cls, title=None, msg=None, msgbtn=0):
+        WPFMessageBox.Show(msg, title, msgbtn, 16)
 
     @classmethod
-    def info(cls, title=None, msg=None):
-        WPFMessageBox.Show(msg, title, 0, 64)
+    def info(cls, title=None, msg=None, msgbtn=0):
+        return WPFMessageBox.Show(msg, title, msgbtn, 64)
 
 
 class ImageDisplayBox(object):
