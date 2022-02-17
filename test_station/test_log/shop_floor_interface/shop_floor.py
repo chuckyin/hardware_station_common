@@ -60,5 +60,8 @@ class ShopFloor(object):
             return True
         if not ShopFloor._floor:
             return False
-        save_results = globals().get('save_results')
+        if isinstance(log, str):  # filename
+            save_results = globals().get('save_results_from_logs')
+        else:
+            save_results = globals().get('save_results')
         return save_results(log) if save_results is not None else False
