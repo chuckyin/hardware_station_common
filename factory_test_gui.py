@@ -172,8 +172,8 @@ class FactoryTestGui(object):
                 ctypes.windll.user32.ShowWindow(whnd, show_console)
                 self._vm_main_view_model.MovFocusToSn()
 
-            except test_station.test_station.TestStationError:
-                self._operator_interface.print_to_console("Error Initializing Test Station.\n", "red")
+            except (test_station.test_station.TestStationError, Exception) as e:
+                self._operator_interface.print_to_console(f"Error Initializing Test Station {str(e)}.\n", "red")
                 setup_ok = False
         if setup_ok:
             self._operator_interface.print_to_console("Initialization complete.\n")
