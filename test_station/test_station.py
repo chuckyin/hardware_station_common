@@ -68,11 +68,7 @@ class TestStation(object):
         """
         test_logs_directory = os.path.join(self._station_config.ROOT_DIR, "factory-test_logs")
         station_id = ("%s-%s" % (self._station_config.STATION_TYPE, self._station_config.STATION_NUMBER))
-        sorted_export_log = False
-        if hasattr(self._station_config, 'SORTED_EXPORT_LOG'):
-            sorted_export_log = self._station_config.SORTED_EXPORT_LOG
-        testlog = test_log.TestRecord(serial_num, logs_dir=test_logs_directory, station_id=("%s" % station_id),
-                                      sorted_export_log=sorted_export_log)
+        testlog = test_log.TestRecord(serial_num, logs_dir=test_logs_directory, station_id=("%s" % station_id))
         if self.workorder is not None:
             testlog.set_user_metadata_dict({'work_order': self.workorder})  # add work order to log file
         self._operator_interface.print_to_console("Checking Unit %s...\n" % serial_num)

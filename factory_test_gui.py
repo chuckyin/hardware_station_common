@@ -179,7 +179,7 @@ class FactoryTestGui(object):
             self._operator_interface.print_to_console("Initialization complete.\n")
             self.root.IsEnabled = True
             self._operator_interface.print_to_console("waiting for sn\n")
-            self._operator_interface.update_root_config({'Hint': "Scan or type the DUT Serial Number"})
+            self._operator_interface.prompt("Scan or type the DUT Serial Number", 'green')
         else:
             # self._sn_entry.config(state='disabled')
             # then we'll drop back int mainloop(), but our controls are disabled.
@@ -236,7 +236,8 @@ class FactoryTestGui(object):
             self.test_iteration(serial_number)
         gc.collect()
 
-        self._operator_interface.update_root_config({'IsBusy': 'False', 'SN': '', 'Hint': "Scan or the type DUT Serial Number"})
+        self._operator_interface.update_root_config({'IsBusy': 'False', 'SN': ''})
+        self._operator_interface.prompt('Scan or the type DUT Serial Number', 'green')
         self._vm_main_view_model.MovFocusToSn()
         # Application.Current.Dispatcher.Invoke(Action(self.reset_running_status))
 
@@ -341,6 +342,7 @@ class FactoryTestGui(object):
             self._operator_interface.clear_test_values()
             self._operator_interface.update_root_config(
                 {'FinalResult': '', 'Hint': '', 'ResultMsg': '', 'ResultMsgEx': ''})
+            self._operator_interface.prompt('', '')
 
             self.station.validate_sn(user_value)
             if self.is_looping_enabled():

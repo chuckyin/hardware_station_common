@@ -38,8 +38,8 @@ class OperatorInterface(object):
             except:
                 raise
 
-    def prompt(self, msg, color=None):
-        pass
+    def prompt(self, msg, color='aliceblue'):
+        self._console.UpdatePromptMsg(msg, color)
 
     def print_to_console(self, msg, color=None):
         color_map = {

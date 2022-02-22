@@ -61,7 +61,7 @@ class TestRecord(object):
     def __del__(self):
         del self._results_array, self._user_meta_data_dict, self._shopfloor
 
-    def __init__(self, uut_sn, logs_dir="logs", station_id=None, sorted_export_log=True):
+    def __init__(self, uut_sn, logs_dir="logs", station_id=None):
         self._uut_sn = uut_sn
         self._start_time = datetime.now()
         self._end_time = None
@@ -70,7 +70,6 @@ class TestRecord(object):
         self._overall_did_pass = None
         self._overall_error_code = None
         self._first_failing_test_result = None
-        self._sorted_export_log = sorted_export_log
 
         # keeping with the idea that a test log should carry enough data to print a report,
         # allow folks to enter their own arbitrary metadata
