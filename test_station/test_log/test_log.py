@@ -423,7 +423,7 @@ class TestResult(object):
         # can't pick comptype.  Options are <= hilim and/or >= lolim
         self._low_limit = low_limit
         self._high_limit = high_limit
-
+        self._apply_limits = apply_limits
         self._comp_type = 'TEST'       # later should be EQ/NE/GE/LE/GT/LT/GTLT/GELE/ etc...
         if not apply_limits:
             self._comp_type = 'NOTEST'
@@ -469,7 +469,8 @@ class TestResult(object):
         no_test_done = True
 
         # skip the limits-auto-detect if (apply_limits=False) already set comp_type to NOTEST.
-        if self._comp_type == 'TEST':
+        # if self._comp_type == 'TEST':
+        if self._apply_limits:
             if self._low_limit is None:  # no lower threshold enforced.
                 low_ok = True
             else:
