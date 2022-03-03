@@ -6,11 +6,6 @@ __author__ = 'chuckyin'
 # pylint: disable=R0924
 # pylint: disable=W0201
 
-#import Tkinter as tk
-#import tkMessageBox
-
-import tkinter as tk
-from tkinter import messagebox
 import time
 import argparse
 import hardware_station_common.operator_interface as operator_interface
@@ -52,6 +47,8 @@ from System import Action, Delegate
 from Hsc import MainWindow, App, InputMsgBox
 from System.Collections.Generic import Dictionary
 from Hsc.ViewModel import ViewModelLocator, MainViewModel
+from hardware_station_common.utils.gui_utils import MessageBox
+
 
 class FactoryTestGui(object):
     def __init__(self, station_config, test_station_init):
@@ -465,12 +462,12 @@ class UpdateStationIdDialog(object):
             self.apply()
             return True
         except ValueError:
-            messagebox.showerror(title="Station Config Error",
-                                   message=("Station ID is of the form stationId-stationNumber"))
+            MessageBox.error(title="Station Config Error",
+                             msg="Station ID is of the form stationId-stationNumber")
             return False
         except test_station.test_station.TestStationError:
-            messagebox.showerror(title="Station Config Error", message=("%s is not a valid station type!" %
-                                                                          self._gui.station_config.STATION_TYPE))
+            MessageBox.error(title="Station Config Error",
+                             msg=f"{self._gui.station_config.STATION_TYPE} is not a valid station type!")
             return False
         except:
             # raise any other weird exceptions we might get
