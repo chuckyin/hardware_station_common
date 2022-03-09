@@ -24,6 +24,12 @@ The customized hardware to bind DUT/Equipment/PC, with basic functions such as l
 ### Station
 Station = DUT + Fixture + Equipment
 
+*****
+*<u>UI_Depencies:</u>*
+*copy all the file in UI_dep to directory the root dir.*
+
+*****
+
 ## Installation:
 OpenExec can be run by external python; however, setting up a virtual environment to maintain a clean environment is recommended. If the dependencies are not installed yet, please install the dependencies:
 ```sh
