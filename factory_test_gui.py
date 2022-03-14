@@ -374,7 +374,7 @@ class FactoryTestGui(object):
         self._operator_interface.update_root_config(init_config)
 
         self._vm_main_view_model.ShowWorkOrder = True if self.station_config.USE_WORKORDER_ENTRY else False
-        if int(self.station_config.STATION_NUMBER) == 0:
+        if isinstance(self.station_config.STATION_NUMBER, int) and self.station_config.STATION_NUMBER == 0:
             self.update_stationtype_display()
         else:
             self.create_station()
