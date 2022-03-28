@@ -202,7 +202,7 @@ class FactoryTestGui(object):
 
     def run_test(self, serial_number):
         # self.set_running_status(True)
-        self._operator_interface.update_root_config({'IsBusy': 'True', 'Hint': ''})
+        self._operator_interface.update_root_config({'IsBusy': 'True'})
         self._operator_interface.print_to_console (f'SERINAL_NUMBER:{serial_number}\n')
 
         if self.is_looping_enabled():
@@ -213,7 +213,7 @@ class FactoryTestGui(object):
             self._operator_interface.clear_console()
             self._operator_interface.clear_test_values()
             self._operator_interface.update_root_config(
-                {'FinalResult': '', 'Hint': '', 'ResultMsg': '', 'ResultMsgEx': ''})
+                {'FinalResult': '', 'ResultMsg': '', 'ResultMsgEx': ''})
             self.test_iteration(serial_number)
         gc.collect()
 

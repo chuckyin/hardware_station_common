@@ -111,8 +111,14 @@ class OperatorInterface(object):
             clrdict[k] = v
         self._console.Config(clrdict)
 
-    def active_start_loop(self, serial_number):
-        self.update_root_config({'SN': serial_number})
+    def active_start_loop(self, serial_number=None):
+        if serial_number is not None:
+            self.update_root_config({'SN': serial_number})
         self._console.MovFocusToSn()
         self._console.StartLoop()
 
+    def close_application(self):
+        if Application.Current.Dispatcher.CheckAccess():
+            Application.Current.Shutdown(-1)
+        else:
+            Application.Current.Dispatcher.Invoke(Action(self.close_application))
