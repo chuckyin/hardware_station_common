@@ -17,7 +17,7 @@ clr.AddReference("PresentationFramework.Classic, Version=3.0.0.0, Culture=neutra
 clr.AddReference("PresentationCore, Version=3.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35")
 from System.Windows import Application, Window
 from System.Threading import Thread, ApartmentState, ThreadStart
-from System import Action, Delegate
+from System import Action, Delegate, Func
 from System.Collections.Generic import Dictionary
 
 class OperatorInterfaceError(Exception):
@@ -122,3 +122,9 @@ class OperatorInterface(object):
             Application.Current.Shutdown(-1)
         else:
             Application.Current.Dispatcher.Invoke(Action(self.close_application))
+
+    def current_serial_number(self):
+        if Application.Current.Dispatcher.CheckAccess():
+            return self._console.SerialNumber
+        else:
+            return Application.Current.Dispatcher.Invoke(Func[str](self.current_serial_number))

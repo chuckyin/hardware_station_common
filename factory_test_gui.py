@@ -124,7 +124,7 @@ class FactoryTestGui(object):
     # an operator starts testing.
     def setguistate_initializetester(self, station):
         self._operator_interface.print_to_console("Initializing Tester...\n", "grey")
-        setup_ok = True
+        setup_ok = False
         if station:
             try:
                 gc.enable()
@@ -152,19 +152,15 @@ class FactoryTestGui(object):
                         show_console = 1
                 ctypes.windll.user32.ShowWindow(whnd, show_console)
                 self._vm_main_view_model.MovFocusToSn()
-
+                setup_ok = True
             except (test_station.test_station.TestStationError, Exception) as e:
                 self._operator_interface.print_to_console(f"Error Initializing Test Station {str(e)}.\n", "red")
                 setup_ok = False
         if setup_ok:
             self._operator_interface.print_to_console("Initialization complete.\n")
-            self.root.IsEnabled = True
+            self._operator_interface.update_root_config({'IsEnabled': 'True'})
             self._operator_interface.print_to_console("waiting for sn\n")
             self._operator_interface.prompt("Scan or type the DUT Serial Number", 'green')
-        else:
-            # self._sn_entry.config(state='disabled')
-            # then we'll drop back int mainloop(), but our controls are disabled.
-            pass
 
     def thread_it(self, func, *args):
         import threading
@@ -282,7 +278,7 @@ class FactoryTestGui(object):
             self._operator_interface.print_to_console('Station Type: %s\n' % self.station_config.STATION_TYPE)
             self.station = self._test_station_init(self.station_config, self._operator_interface)
             station_id = (f'{self.station_config.STATION_TYPE}_{self.station_config.STATION_NUMBER}')
-            self.root.Title = "Oculus HWTE " + station_id
+            self._operator_interface.update_root_config({'Title': f'Oculus HWTE {station_id}'})
         except:
             raise
 
@@ -340,14 +336,7 @@ class FactoryTestGui(object):
             self._operator_interface.print_to_console("waiting for sn\n")
             self._g_loop_sn = None
 
-    def AppStartUp(self, sender, e):
-        self.root = MainWindow()
-
-        self.root.Title = "Please scan test_station id !!!!"
-        self.root.Show()
-        self.root.IsEnabled = False
-        self.root.MuAction += self.mu_action
-
+    def _app_startup(self):
         self._vm_locator = ViewModelLocator.Instance
         self._vm_main_view_model = ViewModelLocator.Instance.Main
         self._vm_main_view_model.MuStartLoop += self.start_loop
@@ -365,6 +354,7 @@ class FactoryTestGui(object):
             init_config['SwTitle'] = self.station_config.SW_TITLE
         init_config['Offline'] = str(not self.station_config.FACEBOOK_IT_ENABLED)
         init_config['Active'] = 'True'
+        init_config['IsEnabled'] = 'False'
         if hasattr(self.station_config, 'Active'):
             init_config['Active'] = str(self.station_config.IS_STATION_ACTIVE)
 
@@ -379,6 +369,16 @@ class FactoryTestGui(object):
         else:
             self.create_station()
             self.setguistate_initializetester(self.station)
+
+    def AppStartUp(self, sender, e):
+        try:
+            self.root = MainWindow()
+            self.root.Title = "Please scan test_station id !!!!"
+            self.root.Show()
+            self.root.MuAction += self.mu_action
+            self._app_startup()
+        except:
+            pass
 
     def STAMain(self):
         app = App()
