@@ -9,6 +9,8 @@ import sys
 import hardware_station_common.utils as utils  # pylint: disable=F0401
 import hardware_station_common.test_station.test_log.shop_floor_interface as shop_floor_interface # pylint: disable=W0403
 import collections
+import importlib
+
 
 ERROR_CODE_UNKNOWN = 9999
 ERROR_CODE_NO_RESULTS = 9998
@@ -380,12 +382,13 @@ class TestRecord(object):
         if os.path.exists(station_config.__file__):
             config_path = os.path.dirname(station_config.__file__)
         station_limits_file = os.path.join(
-            config_path, 'config', ('station_limits_' + station_config.STATION_TYPE + '.py'))
+            config_path, 'config', ('station_limits_' + station_config.STATION_TYPE))
         print(station_limits_file)
         try:
-            exec(open(station_limits_file).read(), globals(), locals())# imports station_limits into current namespace
-            # also provides "self" and "station_config" to station_limits_file
-            # this is probably bad infosec practice :)
+            station_limits_file_pth = os.path.dirname(station_limits_file)
+            sys.path.append(station_limits_file_pth)
+            cfg = importlib.__import__(os.path.basename(station_limits_file), fromlist=[station_limits_file_pth])
+            STATION_LIMITS = cfg.STATION_LIMITS
         except Exception as e:
             raise TestLimitsError("Error loading {0}: \n\t{1}".format(station_limits_file, str(e)))
         ids = [limit['unique_id'] for limit in STATION_LIMITS]
