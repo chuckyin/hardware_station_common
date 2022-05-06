@@ -9,10 +9,8 @@ from hardware_station_common import utils
 import json
 
 import clr
-clr.AddReference('AgLib')
-clr.AddReference('Util')
 clr.AddReference('Xceed.Wpf.Toolkit')
-
+clr.AddReference('StationNetCore')
 clr.AddReference("PresentationFramework.Classic, Version=3.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35")
 clr.AddReference("PresentationCore, Version=3.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35")
 from System.Windows import Application, Window

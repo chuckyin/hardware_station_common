@@ -136,3 +136,6 @@ class TestStation(object):
         :return overall_result, overall_errorcode
         """
         raise NotImplementedError()
+
+    def login(self, active, usr, pwd):
+        raise NotImplementedError()

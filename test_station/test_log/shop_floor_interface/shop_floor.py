@@ -18,7 +18,7 @@ class ShopFloorError(Exception):
 class ShopFloor(object):
     _floor = False
     def __init__(self):
-        if station_config.FACEBOOK_IT_ENABLED:
+        if hasattr(station_config, 'SHOPFLOOR_SYSTEM'):
             if not( (hasattr(station_config, 'SHOP_FLOOR_DBG') and station_config.SHOP_FLOOR_DBG)
                       or (not ShopFloor._floor) ):
                 return
@@ -65,3 +65,9 @@ class ShopFloor(object):
         else:
             save_results = globals().get('save_results')
         return save_results(log) if save_results is not None else False
+
+    def login(self, usr, pwd):
+        if not ShopFloor._floor:
+            return False
+        login_test = globals().get('login_system')
+        return login_test(usr, pwd) if login_test is not None else False

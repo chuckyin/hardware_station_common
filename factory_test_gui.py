@@ -24,7 +24,6 @@ import clr
 
 clr.AddReference("PresentationFramework.Classic, Version=3.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35")
 clr.AddReference("PresentationCore, Version=3.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35")
-clr.AddReference('AgLib')
 clr.AddReference('CommonServiceLocator')
 clr.AddReference('ErrorHandler')
 clr.AddReference('GalaSoft.MvvmLight')
@@ -34,7 +33,7 @@ clr.AddReference('log4net')
 clr.AddReference('Newtonsoft.Json')
 clr.AddReference('PresentationFramework.Aero2')
 clr.AddReference('System.Windows.Interactivity')
-clr.AddReference('Util')
+clr.AddReference('StationNetCore')
 clr.AddReference('WPFMessageBox')
 clr.AddReference('Xceed.Wpf.DataGrid')
 clr.AddReference('Xceed.Wpf.Toolkit')
@@ -42,7 +41,7 @@ clr.AddReference('Hsc')
 
 from System.Windows import Application, Window
 from System.Threading import Thread, ApartmentState, ThreadStart
-from System import Action, Delegate
+from System import Action, Delegate, Func
 
 from Hsc import MainWindow, App, InputMsgBox
 from System.Collections.Generic import Dictionary
@@ -306,10 +305,11 @@ class FactoryTestGui(object):
             self.station_config.IS_STATION_ACTIVE = bool(e)
         elif sender == "WO":
             self.update_workorder_display()
-        elif sender == 'Offline':
-            self.station_config.FACEBOOK_IT_ENABLED = not bool(e)
         elif sender == 'AutoScan':
             self.station_config.AUTO_SCAN_CODE = bool(e)
+
+    def usr_pwd_login(self, status, usr, pwd):
+        return self.station.login(status, usr, pwd)
 
     def start_loop(self, user_value):
         if not self.station_config.IS_STATION_ACTIVE or not self.check_free_space_ready():
@@ -376,6 +376,7 @@ class FactoryTestGui(object):
             self.root.Title = "Please scan test_station id !!!!"
             self.root.Show()
             self.root.MuAction += self.mu_action
+            self.root.UserPwdCheckFunc = Func[bool, str, str, bool](self.usr_pwd_login)
             self._app_startup()
         except:
             pass
