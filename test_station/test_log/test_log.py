@@ -229,6 +229,12 @@ class TestRecord(object):
             self.calculate_overall_result()   # loads the member variable. We don't need to.
         return self._overall_error_code
 
+    def get_overall_error_string(self):
+        if self._overall_error_code == 0:
+            return ''
+        else:
+            return [c.get_test_name() for c in self._results_array.values() if c.get_unique_id() == self._overall_error_code][0]
+
     # Return the entire TestResult object of the test that failed.
     def get_first_failed_test_result(self):
         if not self._overalls_are_uptodate:
@@ -236,7 +242,7 @@ class TestRecord(object):
         return self._first_failing_test_result
 
     def sprint_csv_summary_header(self):
-        csv_line = "UUT_Serial_Number,Station_ID,StartTime,EndTime,OverallResult,OverallErrorCode"
+        csv_line = "UUT_Serial_Number,Station_ID,StartTime,EndTime,OverallResult,OverallErrorCode,OverallErrorString"
         user_dictionary = self.get_user_metadata_dict()
         if user_dictionary is not None:
             for key in user_dictionary:
@@ -269,14 +275,17 @@ class TestRecord(object):
         # Meta data
         # NOTE: this is currently NOT writing out the user_metadata_dict.
         if (print_headers_only):
-            csv_line = "UUT_Serial_Number, Station_ID, StartTime, EndTime, OverallResult, OverallErrorCode"
+            csv_line = "UUT_Serial_Number, Station_ID, StartTime, EndTime, OverallResult, OverallErrorCode, OverallErrorString"
         else:
-            csv_line = "%s, %s, %s, %s, %s, %d" % (self._uut_sn,
+            err_code = self.get_overall_error_code()
+            err_str = self.get_overall_error_string()
+            csv_line = "%s, %s, %s, %s, %s, %d, %s" % (self._uut_sn,
                                                    self._station_id,
                                                    utils.io_utils.timestamp(self._start_time),
                                                    utils.io_utils.timestamp(self._end_time),
                                                    self.get_pass_fail_string(),
-                                                   self.get_overall_error_code())
+                                                   err_code,
+                                                   err_str)
 
         # Add user-defined meta data dictionary, if any
         user_dictionary = self.get_user_metadata_dict()
@@ -321,6 +330,7 @@ class TestRecord(object):
         header_string += format_as_testresult_string("End_Time", utils.io_utils.timestamp(self._end_time))
         header_string += format_as_testresult_string("Overall_Result", self.get_pass_fail_string())
         header_string += format_as_testresult_string("Overall_ErrorCode", self._overall_error_code)
+        header_string += format_as_testresult_string("Overall_ErrorString", self.get_overall_error_string())
         user_dictionary = self.get_user_metadata_dict()
         if user_dictionary is not None:
             for key in user_dictionary:
