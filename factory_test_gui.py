@@ -124,6 +124,7 @@ class FactoryTestGui(object):
     def setguistate_initializetester(self, station):
         self._operator_interface.print_to_console("Initializing Tester...\n", "grey")
         setup_ok = False
+        init_ui_status = None
         if station:
             try:
                 gc.enable()
@@ -142,7 +143,7 @@ class FactoryTestGui(object):
                     handler.setLevel(logging.DEBUG)
                     logger.addHandler(handler)
 
-                station.initialize()
+                init_ui_status = station.initialize()
 
                 show_console = 0
                 whnd = ctypes.windll.kernel32.GetConsoleWindow()
@@ -157,7 +158,8 @@ class FactoryTestGui(object):
                 setup_ok = False
         if setup_ok:
             self._operator_interface.print_to_console("Initialization complete.\n")
-            self._operator_interface.update_root_config({'IsEnabled': 'True'})
+            if init_ui_status != False:
+                self._operator_interface.update_root_config({'IsEnabled': 'True'})
             self._operator_interface.print_to_console("waiting for sn\n")
             self._operator_interface.prompt("Scan or type the DUT Serial Number", 'green')
 
