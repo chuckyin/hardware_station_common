@@ -251,7 +251,7 @@ class TestRecord(object):
             csv_line += "," + test.s_print_csv(True, print_measurements_only=True)
         csv_line += "\n"
 
-        csv_line += "UpperLimit--->,NA,NA,NA,NA,NA"
+        csv_line += "UpperLimit--->,NA,NA,NA,NA,NA,NA"
         if user_dictionary is not None:
             for key in user_dictionary:
                 csv_line += ",NA"
@@ -259,7 +259,7 @@ class TestRecord(object):
             csv_line += f",{test._high_limit}"
         csv_line += "\n"
 
-        csv_line += "LowerLimit--->,NA,NA,NA,NA,NA"
+        csv_line += "LowerLimit--->,NA,NA,NA,NA,NA,NA"
         if user_dictionary is not None:
             for key in user_dictionary:
                 csv_line += ",NA"
