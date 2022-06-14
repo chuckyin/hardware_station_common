@@ -1,5 +1,6 @@
 __author__ = 'chuckyin'
 
+import time
 from datetime import datetime
 from datetime import timedelta
 import re
@@ -8,6 +9,8 @@ import sys
 import hardware_station_common.utils as utils  # pylint: disable=F0401
 import hardware_station_common.test_station.test_log.shop_floor_interface as shop_floor_interface # pylint: disable=W0403
 import collections
+import importlib
+
 
 ERROR_CODE_UNKNOWN = 9999
 ERROR_CODE_NO_RESULTS = 9998
@@ -57,6 +60,9 @@ class TestRecord(object):
         thisRun.EndTest()
 
     '''
+    def __del__(self):
+        del self._results_array, self._user_meta_data_dict, self._shopfloor
+
     def __init__(self, uut_sn, logs_dir="logs", station_id=None):
         self._uut_sn = uut_sn
         self._start_time = datetime.now()
@@ -91,6 +97,7 @@ class TestRecord(object):
 
         self._overalls_are_uptodate = False  # flag to track whether or not results have been added since the last time
                                             # the overall result (or error code) was queried.
+
         self._shopfloor = shop_floor_interface.shop_floor.ShopFloor()
 
     def set_user_metadata_dict(self, meta):
@@ -113,7 +120,7 @@ class TestRecord(object):
 
     def add_result(self, test_result_object):
         if test_result_object.get_test_name() in self._results_array:
-            raise TestLimitsError("Test result names must be unique")
+            raise TestLimitsError("Test result names must be unique. {0}".format(test_result_object.get_test_name()))
         else:
             self._overalls_are_uptodate = False
             if test_result_object.get_unique_id() is 1:
@@ -165,9 +172,8 @@ class TestRecord(object):
     def get_unique_test_instance_id(self):
         return self._unique_instance_id
 
-    def _sort_test_results_by_timestamp(self):
-        return sorted(self._results_array.values(),
-                      key=lambda t: t.measurement_time if t.measurement_time else datetime.now())
+    def _sort_test_results_by(self):
+        return self._results_array.values()
 
     def calculate_overall_result(self):
         '''Callers should use the GetOverallResult() and GetOverallErrorCode functions instead.
@@ -179,7 +185,7 @@ class TestRecord(object):
             self._overall_did_pass = False
             self._overall_error_code = ERROR_CODE_NO_RESULTS
         else:
-            for test in self._sort_test_results_by_timestamp():
+            for test in self._sort_test_results_by():
                 # grab the unique id of the first test that failed.
                 if not test.did_pass():
                     overall_did_pass = False
@@ -197,7 +203,7 @@ class TestRecord(object):
 
     def end_test(self):
         self._end_time = datetime.now()
-        final_result = self.calculate_overall_result()
+        final_result = self.get_overall_result()
 
         # cram the pass/fail result onto the filename
         result_suffix = '_F.log'
@@ -228,6 +234,34 @@ class TestRecord(object):
         if not self._overalls_are_uptodate:
             self.calculate_overall_result()   # loads the member variable. We don't need to.
         return self._first_failing_test_result
+
+    def sprint_csv_summary_header(self):
+        csv_line = "UUT_Serial_Number,Station_ID,StartTime,EndTime,OverallResult,OverallErrorCode"
+        user_dictionary = self.get_user_metadata_dict()
+        if user_dictionary is not None:
+            for key in user_dictionary:
+                csv_line += "," + key
+        for test in self._results_array.values():
+            csv_line += "," + test.s_print_csv(True, print_measurements_only=True)
+        csv_line += "\n"
+
+        csv_line += "UpperLimit--->,NA,NA,NA,NA,NA"
+        if user_dictionary is not None:
+            for key in user_dictionary:
+                csv_line += ",NA"
+        for test in self._results_array.values():
+            csv_line += f",{test._high_limit}"
+        csv_line += "\n"
+
+        csv_line += "LowerLimit--->,NA,NA,NA,NA,NA"
+        if user_dictionary is not None:
+            for key in user_dictionary:
+                csv_line += ",NA"
+        for test in self._results_array.values():
+            csv_line += f",{test._low_limit}"
+        csv_line += "\n"
+
+        return csv_line
 
     def sprint_csv_summary_line(self, print_headers_only=False, print_measurements_only=False):
         csv_line = ""
@@ -268,8 +302,10 @@ class TestRecord(object):
         try:
             log_file = open(full_path, 'w')
             log_file.write(self.sprint_meta_data_to_csv())
-            for test in self._sort_test_results_by_timestamp():
+
+            for test in self._sort_test_results_by():
                 log_file.write(test.s_print_csv(with_new_line=True))
+
             log_file.close()
         except:
             print ("ERROR: couldn't open file [%s] for writing!\n" % full_path)
@@ -307,16 +343,10 @@ class TestRecord(object):
         return os.path.join(self._logs_dir, self._filename)
 
     def ok_to_test(self, serial_number):
-        if self._shopfloor.ok_to_test(serial_number) is True:
-            return True
-        else:
-            return False
+        return self._shopfloor.ok_to_test(serial_number)
 
     def save_results(self):
-        if self._shopfloor.save_results(self) is True:
-            return True
-        else:
-            return False
+        return self._shopfloor.save_results(self)
 
     def get_test_by_name(self, test_name):
         if test_name not in self._results_array:
@@ -325,7 +355,8 @@ class TestRecord(object):
 
     def set_measured_value_by_name(self, test_name, measured_value):
         result = self.get_test_by_name(test_name)
-        return result.set_measured_value(measured_value)
+        res = result.set_measured_value(measured_value)
+        return res
 
     def load_limits(self, station_config):
         """
@@ -336,30 +367,40 @@ class TestRecord(object):
         """
 
         # allow running of test_log standalone for module testing.
+        items = TestRecord.pre_load_limit(station_config)
+        for test_result in items:
+            self.add_result(test_result)
+
+    @staticmethod
+    def pre_load_limit(station_config):
         if station_config is None:
             return
 
         global STATION_LIMITS  # from station_limits_file
-        config_path = os.path.dirname(os.path.realpath(station_config.__file__))
+        #  add by elton:1028/2019
+        config_path = os.getcwd()
+        if os.path.exists(station_config.__file__):
+            config_path = os.path.dirname(station_config.__file__)
         station_limits_file = os.path.join(
-            config_path, 'config', ('station_limits_' + station_config.STATION_TYPE + '.py'))
+            config_path, 'config', ('station_limits_' + station_config.STATION_TYPE))
+        print(station_limits_file)
         try:
-            exec(open(station_limits_file).read(), globals(), locals())# imports station_limits into current namespace
-            # also provides "self" and "station_config" to station_limits_file
-            # this is probably bad infosec practice :)
+            station_limits_file_pth = os.path.dirname(station_limits_file)
+            sys.path.append(station_limits_file_pth)
+            cfg = importlib.__import__(os.path.basename(station_limits_file), fromlist=[station_limits_file_pth])
+            STATION_LIMITS = cfg.STATION_LIMITS
         except Exception as e:
             raise TestLimitsError("Error loading {0}: \n\t{1}".format(station_limits_file, str(e)))
         ids = [limit['unique_id'] for limit in STATION_LIMITS]
         if len(ids) != len(set(ids)):
             raise TestLimitsError("error codes are not unique!")
+        test_record_items = []
         for station_limit in STATION_LIMITS:
             # ['name','low_limit', 'high_limit', 'uniqe_id']
             test_result = TestResult(name=station_limit['name'], low_limit=station_limit['low_limit'],
                                      high_limit=station_limit['high_limit'], unique_id=station_limit['unique_id'])
-            try:
-                self.add_result(test_result)
-            except:
-                raise
+            test_record_items.append(test_result)
+        return test_record_items
 
 NO_ERROR_CODE_REGISTERED = -1
 TEST_PASSED_CODE = 0
@@ -380,13 +421,12 @@ class TestResult(object):
         self._numeric_error_code = -1   # -1 is no code. 0 is passed.  other is an error.
         self._measured_value = None
         self._did_pass = False
-        self.measurement_time = None
         # HACKED LIMITS:
         # can only spec limits in init.
         # can't pick comptype.  Options are <= hilim and/or >= lolim
         self._low_limit = low_limit
         self._high_limit = high_limit
-
+        self._apply_limits = apply_limits
         self._comp_type = 'TEST'       # later should be EQ/NE/GE/LE/GT/LT/GTLT/GELE/ etc...
         if not apply_limits:
             self._comp_type = 'NOTEST'
@@ -428,19 +468,18 @@ class TestResult(object):
 
     def set_measured_value(self, value):
         self._measured_value = value
-        print ("DEBUG: (%s) recording value %s" % (self._test_name, value))
-        self.measurement_time = datetime.now()
         low_ok = False
         no_test_done = True
 
         # skip the limits-auto-detect if (apply_limits=False) already set comp_type to NOTEST.
-        if self._comp_type == 'TEST':
+        # if self._comp_type == 'TEST':
+        if self._apply_limits:
             if self._low_limit is None:  # no lower threshold enforced.
                 low_ok = True
             else:
                 no_test_done = False
                 if value < self._low_limit:
-                    self.set_error_code(FAIL_MEASURED_VALUE_TOO_LOW)  # handles the didPass as well
+                    # self.set_error_code(FAIL_MEASURED_VALUE_TOO_LOW)  # handles the didPass as well
                     low_ok = False
                 else:
                     low_ok = True
@@ -449,7 +488,7 @@ class TestResult(object):
             else:
                 no_test_done = False
                 if value > self._high_limit:
-                    self.set_error_code(FAIL_MEASURED_VALUE_TOO_HIGH)  # handles the didPass as well
+                    # self.set_error_code(FAIL_MEASURED_VALUE_TOO_HIGH)  # handles the didPass as well
                     high_ok = False
                 else:
                     high_ok = True
@@ -473,11 +512,6 @@ class TestResult(object):
 
     def get_measured_value(self):
         return self._measured_value
-
-    def get_measurement_timestamp(self):
-        if self.measurement_time is None:
-            self.measurement_time = datetime.now()
-        return utils.io_utils.timestamp(self.measurement_time)
 
     def set_unique_id(self, unique_id):
         self._unique_id = unique_id
@@ -507,6 +541,9 @@ class TestResult(object):
                 elif normalized == 'FAIL':
                     self._did_pass = False
                     self._numeric_error_code = FAIL_MANUALLY_ENTERED
+                # edit by elton
+                elif normalized == self._high_limit.upper() and normalized == self._low_limit.upper():
+                    self._did_pass = True
                 else:
                     self._did_pass = False
                     unhandled_input = True
@@ -563,7 +600,7 @@ class TestResult(object):
                 # In the case where we're printing the full results, the header is just 'MeasuredVal'
                 csv_line = self._test_name
             else:
-                csv_line = ("Index, TestName, MeasuredVal, LoLim, HiLim, Timestamp, Result, ErrorCode")
+                csv_line = ("Index, TestName, MeasuredVal, LoLim, HiLim, Result, ErrorCode")
         else:
 
             # Processing of MeasuredValue is common to both paths:
@@ -596,20 +633,17 @@ class TestResult(object):
                         high = make_printable(self._high_limit)
                     else:
                         high = ' '
-                    time = self.get_measurement_timestamp()
                     pass_fail = '(LOG)'
                 else:
                     low = make_printable(self._low_limit)
                     high = make_printable(self._high_limit)
-                    time = self.get_measurement_timestamp()
                     pass_fail = self.get_pass_fail_string()
 
-                csv_line = ("%d, %s, %s, %s, %s, %s, %s, %s" % (test_index,
+                csv_line = ("%d, %s, %s, %s, %s, %s, %s" % (test_index,
                                                                 name,
                                                                 val,
                                                                 low,
                                                                 high,
-                                                                time,
                                                                 pass_fail,
                                                                 error))
 

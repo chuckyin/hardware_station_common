@@ -6,11 +6,6 @@ __author__ = 'chuckyin'
 # pylint: disable=R0924
 # pylint: disable=W0201
 
-#import Tkinter as tk
-#import tkMessageBox
-
-import tkinter as tk
-from tkinter import messagebox
 import time
 import argparse
 import hardware_station_common.operator_interface as operator_interface
@@ -19,6 +14,41 @@ import hardware_station_common.utils as utils
 import re
 import hardware_station_common.test_station.test_log as test_log
 import os
+import ctypes
+import sys
+import gc
+import logging
+import datetime
+import clr
+
+
+clr.AddReference("PresentationFramework.Classic, Version=3.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35")
+clr.AddReference("PresentationCore, Version=3.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35")
+clr.AddReference('AgLib')
+clr.AddReference('CommonServiceLocator')
+clr.AddReference('ErrorHandler')
+clr.AddReference('GalaSoft.MvvmLight')
+clr.AddReference('GalaSoft.MvvmLight.Extras')
+clr.AddReference('GalaSoft.MvvmLight.Platform')
+clr.AddReference('log4net')
+clr.AddReference('Newtonsoft.Json')
+clr.AddReference('PresentationFramework.Aero2')
+clr.AddReference('System.Windows.Interactivity')
+clr.AddReference('Util')
+clr.AddReference('WPFMessageBox')
+clr.AddReference('Xceed.Wpf.DataGrid')
+clr.AddReference('Xceed.Wpf.Toolkit')
+clr.AddReference('Hsc')
+
+from System.Windows import Application, Window
+from System.Threading import Thread, ApartmentState, ThreadStart
+from System import Action, Delegate
+
+from Hsc import MainWindow, App, InputMsgBox
+from System.Collections.Generic import Dictionary
+from Hsc.ViewModel import ViewModelLocator, MainViewModel
+from hardware_station_common.utils.gui_utils import MessageBox
+
 
 class FactoryTestGui(object):
     def __init__(self, station_config, test_station_init):
@@ -31,15 +61,10 @@ class FactoryTestGui(object):
         self._g_num_loops_completed = 0
         self._g_num_passing_loops = 0
         self._g_target_num_loops = None   # None is special flag for "we're not looping."
-        self._loop_label = None
-        self.work_order_label = None
-        self._work_order_edit_button = None
-        self._sn_entry = None
+        self._vm_locator = None
+        self._vm_main_view_model = None
         self.g_workorder = ""
-        self._cons = None
-        self._prompt = None
         self.root = None
-        self._g_entry_allowed = False
 
     def is_looping_enabled(self):
         return self._g_target_num_loops is not None
@@ -61,9 +86,10 @@ class FactoryTestGui(object):
                     self._g_num_passing_loops += 1
 
             # report counts to the user
-            self._loop_label.config(text=("completed %d of %d loops.  %d passed" %
-                                    (self._g_num_loops_completed, self._g_target_num_loops, self._g_num_passing_loops)))
-            self._loop_label.update()
+            msg = "completed %d of %d loops.  %d passed" % (self._g_num_loops_completed,
+                                                            self._g_target_num_loops, self._g_num_passing_loops)
+            self._operator_interface.update_root_config({'Hint': msg})
+
             time.sleep(1)
 
             # check if we're done looping
@@ -84,133 +110,150 @@ class FactoryTestGui(object):
             # if we're not in looping mode, this function returns None
             return None
 
-    # wait for operator to scan barcode label
-    # This does not necessarily start the test.
-    def setguistate_waitforsn(self):
-        self._operator_interface.print_to_console("waiting for sn\n")
-        self._g_entry_allowed = True
-        if self._g_loop_sn is None:  # Whether we're looping or not, we need a SN.
-            self._sn_entry.config(state='normal')
-            if not self.station_config.FACEBOOK_IT_ENABLED:
-                self._sn_entry.config(bg='yellow')
-            self._sn_entry.delete(0, tk.END)   # make sure to re-enable the control BEFORE deleting.
-            self._sn_entry.focus_set()
-            #fixture.SetDefaultState()
-            self._prompt.config(text="Scan or type DUT Serial Number:")
-        elif self.is_looping_enabled():
-            # SN is still left in the box from when we first got it.
-            # Manually call the OnSnEnter callback since 5 minutes of googling didn't tell me how to
-            # programatically enter the text into the SN text box.
-            self.on_sn_enter(None)     # on_sn_enter expects the calling event to be passed in.
-                                     # telling it we have None will make it use the gLoopSN
+    def write(self, msg):
+        """
+        @type msg: str
+        @return:
+        """
+        if not msg.isspace():
+            msg = msg.strip('\n')
+            msg = msg.replace('\r', '」') + '\n'
+            self._operator_interface.print_to_console(msg)
 
     # if there are basic errors connecting to instruments, we should find out before
     # an operator starts testing.
     def setguistate_initializetester(self, station):
         self._operator_interface.print_to_console("Initializing Tester...\n", "grey")
-        self._sn_entry.config(state='disabled')
-        setup_ok = True
+        setup_ok = False
         if station:
             try:
+                gc.enable()
+                if (hasattr(self.station_config, 'IS_PRINT_TO_LOG')
+                        and self.station_config.IS_PRINT_TO_LOG):
+                    sys.stdout = self
+                    sys.stderr = self
+                    sys.stdin = None
+
+                if (hasattr(self.station_config, 'IS_LOG_PROFILING')
+                     and self.station_config.IS_LOG_PROFILING):
+                    logger = logging.getLogger('profiling')
+                    logger.setLevel(logging.DEBUG)
+                    fn = f'profile_{datetime.datetime.now().strftime("%Y%m%d_%H%M%S")}.log'
+                    handler = logging.FileHandler(fn)
+                    handler.setLevel(logging.DEBUG)
+                    logger.addHandler(handler)
+
                 station.initialize()
-            except test_station.test_station.TestStationError:
-                self._operator_interface.print_to_console("Error Initializing Test Station", "red")
+
+                show_console = 0
+                whnd = ctypes.windll.kernel32.GetConsoleWindow()
+                if whnd != 0:
+                    if hasattr(self.station_config, 'SHOW_CONSOLE') and self.station_config.SHOW_CONSOLE:
+                        show_console = 1
+                ctypes.windll.user32.ShowWindow(whnd, show_console)
+                self._vm_main_view_model.MovFocusToSn()
+                setup_ok = True
+            except (test_station.test_station.TestStationError, Exception) as e:
+                self._operator_interface.print_to_console(f"Error Initializing Test Station {str(e)}.\n", "red")
                 setup_ok = False
         if setup_ok:
             self._operator_interface.print_to_console("Initialization complete.\n")
-            self.setguistate_waitforsn()
-        else:
-            self._sn_entry.config(state='disabled')
-            # then we'll drop back int mainloop(), but our controls are disabled.
+            self._operator_interface.update_root_config({'IsEnabled': 'True'})
+            self._operator_interface.print_to_console("waiting for sn\n")
+            self._operator_interface.prompt("Scan or type the DUT Serial Number", 'green')
 
-    # wait for the signal that the UUT is in the fixture and everything is ready to run.
-    # In the simplest case, this could be <ENTER> from the operator
-    def setguistate_waitfortesterready(self):
-        self._cons.set_bg('grey')
-        self._sn_entry.config(state='disabled')
-        if not self.is_looping_enabled():
-            self.station.is_ready()
-        self.setguistate_run()
-
-    def setguistate_run(self):
-        self._prompt.config(text="Test in progress.")
-        self._prompt.update()
-        self._cons.set_bg('white')
-        self._operator_interface.clear_console()
-        self.run_test(self._sn_entry.get())
+    def thread_it(self, func, *args):
+        import threading
+        t = threading.Thread(target=func, args=args)
+        t.setDaemon(True)
+        t.start()
+        return t
 
     def test_iteration(self, serial_number):
         self._operator_interface.print_to_console("Running Test.\n")
+        overall_result = False
+        first_failed_test_result = None
         if self.station_config.USE_WORKORDER_ENTRY:
             self.station.workorder = self.g_workorder
         try:
             (overall_result, first_failed_test_result) = self.station.test_unit(serial_number.upper())
-        except test_station.test_station.TestStationProcessControlError:
-            self._operator_interface.operator_input("Process Control Error",
-                                                    "Unit %s not ok for testing.\n" % serial_number)
-            self._operator_interface.clear_console()
-            self._operator_interface.print_to_console("", 'grey')
-            self.setguistate_waitforsn()
+        except test_station.test_station.TestStationProcessControlError as e:
+            msg = 'Process Control Error: Unit %s [  %s  ] ...\n' % (serial_number, e.message)
+            self._operator_interface.print_to_console(msg, 'red')
+            self._operator_interface.print_to_console('*******************\n')
+            self._g_loop_sn = None  # cancle the loop test while error
             return
             
         except Exception as e:
-            self._operator_interface.print_to_console("Test Station Error:\n{0}".format(str(e)), "red")
-            raise
+            self._operator_interface.print_to_console("Test Station Error:{0}\n".format(str(e)), "red")
+            self._g_loop_sn = None
 
         self.gui_show_result(serial_number, overall_result, first_failed_test_result)
 
+    # def set_running_status(self, status):
+    #     if Application.Current.Dispatcher.CheckAccess():
+    #         self.root.IsBusy = status
+    #     else:
+    #         Application.Current.Dispatcher.Invoke(Action[bool](self.set_running_status), status)
+
     def run_test(self, serial_number):
-        print (serial_number)
+        # self.set_running_status(True)
+        self._operator_interface.update_root_config({'IsBusy': 'True'})
+        self._operator_interface.print_to_console (f'SERINAL_NUMBER:{serial_number}\n')
+
         if self.is_looping_enabled():
-            self._g_loop_sn = serial_number      # record the SN into the persistent global for next time.
+            self._g_loop_sn = serial_number  # record the SN into the persistent global for next time.
         self.test_iteration(serial_number)
         while self._g_loop_sn is not None:
+            time.sleep(1)
+            self._operator_interface.clear_console()
+            self._operator_interface.clear_test_values()
+            self._operator_interface.update_root_config(
+                {'FinalResult': '', 'ResultMsg': '', 'ResultMsgEx': ''})
             self.test_iteration(serial_number)
-        self.setguistate_waitforsn()
+        gc.collect()
 
-    #####################################################################
-    # WaitFor Fixture Ready pollers.
-    #####################################################################
+        self._operator_interface.update_root_config({'IsBusy': 'False', 'SN': ''})
+        self._operator_interface.prompt('Scan or the type DUT Serial Number', 'green')
+        self._vm_main_view_model.MovFocusToSn()
+        # Application.Current.Dispatcher.Invoke(Action(self.reset_running_status))
 
-    #####################################################################
-    # GUI Event handler callbacks
-    #####################################################################
-    def on_sn_enter(self, event):
-        if self._g_entry_allowed is True:
-            if (event is None):
-                print ("on_sn_enter (looping): Using serial number value of %s" % self._g_loop_sn)
-                user_value = self._g_loop_sn
-            else:
-                user_value = event.widget.get()
-            try:
-                self._g_entry_allowed = False
-                self.station.validate_sn(user_value)
-                if self.is_looping_enabled():
-                    self._g_loop_sn = user_value      # record the SN into the persistent global for next time.
-                self.setguistate_waitfortesterready()
-            except test_station.test_station.TestStationSerialNumberError as teststationerror:
-                messagebox.showwarning(message="%s" % str(teststationerror))
-                self._g_entry_allowed = True
-                self.setguistate_waitforsn()
+    def get_free_space_mb(self, folder):
+        import ctypes
+        free_bytes = ctypes.c_ulonglong(0)
+        ctypes.windll.kernel32.GetDiskFreeSpaceExW(ctypes.c_wchar_p(folder), None, None, ctypes.pointer(free_bytes))
+        return free_bytes.value / 1024 / 1024
 
-    def on_app_exit(self):
+    def check_free_space_ready(self):
+        if not hasattr(self.station_config, 'MIN_SPACE_REQUIRED'):
+            return True
+        if isinstance(self.station_config.MIN_SPACE_REQUIRED, list):
+            req_dirs = [c for c in self.station_config.MIN_SPACE_REQUIRED if os.path.exists(c[0])]
+            chk_free_space = [self.get_free_space_mb(req_dir) >= req_size for req_dir, req_size in req_dirs]
+            if not all(chk_free_space):
+                msg = f"Unable to start test, please check mini-space required: {req_dirs} "
+                self._operator_interface.operator_input('WARN', msg=msg, msg_type='warning')
+                return False
+        else:
+            self._operator_interface.print_to_console(f'Please update the configuration named min_space_required.\n')
+        return True
+
+    def on_app_exit(self, sender, e):
         if self.station is not None:
             self.station.close()
         if self._operator_interface is not None:
             self._operator_interface.close()
-        time.sleep(1)
-        self.root.destroy()
+        ViewModelLocator.Cleanup()
+        time.sleep(0.5)
+        self.root.Close()
 
     def gui_show_result(self, serial_number, overall_result, first_failed_test_result=None):
-
-        result_message = "\n-----------------------------------\n"
+        self._operator_interface.print_to_console('-----------------------------------\n')
         did_pass = False
         if overall_result:
-            result_message += "\nUnit [ {0} ] Passed!\n".format(serial_number)
             did_pass = True
             error_code = '[0]'
         else:
-            result_message += "\nUnit [ {0} ] Failed!\n".format(serial_number)
             if first_failed_test_result is None:
                 error_code = "(unknown)"
             else:
@@ -218,25 +261,29 @@ class FactoryTestGui(object):
                     first_failed_test_result.get_unique_id(),
                     first_failed_test_result.get_error_code_as_string())
 
-        result_message += "\n-----------------------------------\n"
-        result_message += "Error Code = {0}\n".format(error_code)
-        if not overall_result:
-            result_message += first_failed_test_result.s_print_csv()
-        result_message += "\n-----------------------------------\n"
-        result_message += "\n\n"
         if did_pass:
-            self._operator_interface.print_to_console(result_message, "green")
+            self._operator_interface.update_root_config({
+                'FinalResult': 'OK',
+                'ResultMsg': ''})
+            self._operator_interface.print_to_console(f'Unit {serial_number} OK\n')
         else:
-            self._operator_interface.print_to_console(result_message, "red")
+            self._operator_interface.update_root_config({
+                'FinalResult': 'NG',
+                'ResultMsg': error_code})
+            self._operator_interface.print_to_console(f'Unit {serial_number} NG, Errcode = {error_code}\n')
         self.update_loop_counter(did_pass)
 
     def create_station(self):
         try:
             self._operator_interface.print_to_console('Station Type: %s\n' % self.station_config.STATION_TYPE)
-            # may have to move this to mainloop
             self.station = self._test_station_init(self.station_config, self._operator_interface)
+            station_id = (f'{self.station_config.STATION_TYPE}_{self.station_config.STATION_NUMBER}')
+            self._operator_interface.update_root_config({'Title': f'Oculus HWTE {station_id}'})
         except:
             raise
+
+    def update_workorder(self):
+        self._operator_interface.update_root_config({'WorkOrder': self.g_workorder})
 
     @staticmethod
     def parse_arguments():
@@ -247,96 +294,119 @@ class FactoryTestGui(object):
         parser.add_argument('-l', '--numloops',
                             type=int,
                             help=loop_help)
-        parser.add_argument('-s', '--serialnum',
-                            help='Allows you to feed in a serial number when using numloops option.')
 
         args = parser.parse_args()
         return args
 
-    def main_loop(self):
-        args = self.parse_arguments()
+    def mu_action(self, sender, e):
+        if sender == 'Browser':
+            import subprocess
+            subprocess.Popen(rf'explorer "{self.station_config.ROOT_DIR}"')
+        elif sender == "Active":
+            self.station_config.IS_STATION_ACTIVE = bool(e)
+        elif sender == "WO":
+            self.update_workorder_display()
+        elif sender == 'Offline':
+            self.station_config.FACEBOOK_IT_ENABLED = not bool(e)
+        elif sender == 'AutoScan':
+            self.station_config.AUTO_SCAN_CODE = bool(e)
 
-        # FIRST THINGS FIRST: Figure out our station type
-        # keep init of all the station config values up here
-        # to make it clear which settings are coming in from there.
-        station_num = self.station_config.STATION_NUMBER
-        station_id = ("%s-%d" % (self.station_config.STATION_TYPE, station_num))
-        window_title = "Oculus HWTE " + station_id
-
-        # GUI setup
-        big_font = "helvetica 18"
-        little_font = "helvetica 12"
-
-        ## root window ##
-        self.root = tk.Tk()
-        self.root.title(window_title)
-
-                ## operator instructions prompt (no need for logging) ##
-        self._prompt = tk.Label(self.root, font=big_font, height=3)
-        self._prompt.config(text="Scan or type DUT Serial Number:")
-        self._prompt.pack(pady=10)
-
-        ## serial number entry box, <Return> here starts the testing process ##
-        self._sn_entry = tk.Entry(self.root, font=big_font)
-        self._sn_entry.pack(pady=20)
-        self._sn_entry.bind('<Return>', self.on_sn_enter)
-
-        ## status console (also goes to Debug Log) ##
-        self._cons = utils.gui_utils.StatusConsoleText(self.root, font=little_font, relief='sunken',
-                                                         bd=5, state='disabled')
-        self._cons.set_bg("grey")
-        self._cons.pack()
-
-        ## workorder label  ##
-        if self.station_config.USE_WORKORDER_ENTRY:
-            self.work_order_label = tk.Label(self.root, font=little_font)
-            self.work_order_label.config(text="workorder: " + self.g_workorder)
-            self.work_order_label.pack()
-            self._work_order_edit_button = tk.Button(self.root, font=little_font,
-                                                     text='Change Work Order', command=self.update_workorder_display)
-            self._work_order_edit_button.pack()
-
+    def start_loop(self, user_value):
+        if not self.station_config.IS_STATION_ACTIVE or not self.check_free_space_ready():
+            return
         try:
-            self._operator_interface = operator_interface.OperatorInterface(self.station_config, self._cons,
-                                                                            self._prompt, log_to_file=True)
-        except:
-            messagebox.showerror(title="Station Config Error", message=("Can't initialize operator interface!\n"))
-            raise
+            self._operator_interface.clear_console()
+            self._operator_interface.clear_test_values()
+            self._operator_interface.update_root_config(
+                {'FinalResult': '', 'Hint': '', 'ResultMsg': '', 'ResultMsgEx': ''})
+            self._operator_interface.prompt('', '')
 
-        self._g_num_loops_completed = 0
-        self._g_num_passing_loops = 0
-        self._g_loop_sn = None
-        if args.numloops is not None:
-            self._g_target_num_loops = args.numloops
-            self._loop_label = tk.Label(self.root, font=little_font)
-            self._loop_label.pack()
-            if args.serialnum is not None:
-                print ("using serial number %s" % args.serialnum)
-                self._g_loop_sn = args.serialnum
-                self._sn_entry.insert(tk.END, self._g_loop_sn)
-        self.update_loop_counter()
+            self.station.validate_sn(user_value)
+            if self.is_looping_enabled():
+                self._g_num_loops_completed = 0
+                self._g_num_passing_loops = 0
+                self.update_loop_counter()
+            self.station.is_ready()
+            self.thread_it(self.run_test, user_value)
+        except test_station.test_station.TestStationSerialNumberError as teststationerror:
+            self._operator_interface.print_to_console(msg="%s" % str(teststationerror), color='red')
+        except Exception as e:
+            self._operator_interface.operator_input(msg="Exception: %s" % str(e), msg_type='error')
+        finally:
+            self._operator_interface.print_to_console("waiting for sn\n")
+            self._g_loop_sn = None
+
+    def _app_startup(self):
+        self._vm_locator = ViewModelLocator.Instance
+        self._vm_main_view_model = ViewModelLocator.Instance.Main
+        self._vm_main_view_model.MuStartLoop += self.start_loop
 
         # version info
+        init_config = {}
         version_file = "VERSION.TXT"
         version_dir = os.getcwd()
         version_filename = os.path.join(version_dir, version_file)
         if os.path.isfile(version_filename):
             version_fileobj = open(version_filename, "r")
             version_data = version_fileobj.read()
-            self._version_info = tk.Label(self.root, font=little_font, height=2)
-            self._version_info.config(text=version_data)
-            self._version_info.pack(pady=5)
+            init_config['VersionData'] = version_data
+        if hasattr(self.station_config, 'SW_TITLE'):
+            init_config['SwTitle'] = self.station_config.SW_TITLE
+        init_config['Offline'] = str(not self.station_config.FACEBOOK_IT_ENABLED)
+        init_config['Active'] = 'True'
+        init_config['IsEnabled'] = 'False'
+        if hasattr(self.station_config, 'Active'):
+            init_config['Active'] = str(self.station_config.IS_STATION_ACTIVE)
 
-        if self.station_config.USE_WORKORDER_ENTRY:
-            self.update_workorder_display()
-        if self.station_config.STATION_NUMBER == 0:
+        log_dir = os.path.join(self.station_config.ROOT_DIR, "factory-test_debug")
+        self._operator_interface = operator_interface.OperatorInterface(self, self._vm_main_view_model, log_dir)
+
+        self._operator_interface.update_root_config(init_config)
+
+        self._vm_main_view_model.ShowWorkOrder = True if self.station_config.USE_WORKORDER_ENTRY else False
+        if isinstance(self.station_config.STATION_NUMBER, int) and self.station_config.STATION_NUMBER == 0:
             self.update_stationtype_display()
         else:
             self.create_station()
             self.setguistate_initializetester(self.station)
 
-        self.root.wm_protocol("WM_DELETE_WINDOW", self.on_app_exit)
-        tk.mainloop()
+    def AppStartUp(self, sender, e):
+        try:
+            self.root = MainWindow()
+            self.root.Title = "Please scan test_station id !!!!"
+            self.root.Show()
+            self.root.MuAction += self.mu_action
+            self._app_startup()
+        except:
+            pass
+
+    def STAMain(self):
+        app = App()
+        app.Startup += self.AppStartUp
+        app.Exit += self.on_app_exit
+        app.Run()
+
+    def main_loop(self):
+        try:
+            t = Thread(ThreadStart(self.STAMain))
+            t.ApartmentState = ApartmentState.STA
+            t.Start()
+
+            args = self.parse_arguments()
+
+            # FIRST THINGS FIRST: Figure out our station type
+            # keep init of all the station config values up here
+            # to make it clear which settings are coming in from there.
+
+            self._g_num_loops_completed = 0
+            self._g_num_passing_loops = 0
+            self._g_loop_sn = None
+            if args.numloops is not None:
+                self._g_target_num_loops = args.numloops
+
+            t.Join()
+        except Exception as e:
+            self._operator_interface.print_to_console(f'Exception from station : {str(e)}')
 
     def update_workorder_display(self):
         sub_window_title = "Edit Work Order"
@@ -347,61 +417,57 @@ class FactoryTestGui(object):
         UpdateStationIdDialog(self, self.root, sub_window_title)
 
 
-class UpdateWorkorderDialog(utils.gui_utils.Dialog):
+class UpdateWorkorderDialog(object):
     def __init__(self, factory_gui, parent, title):
-        squtils.gui_utils.Dialog.__init__(self, parent, title)
         self._gui = factory_gui
+        self._wo_dlg = InputMsgBox()
+        self._wo_dlg.Owner = parent
+        self._wo_dlg.Title = title
+        self._wo_dlg.MuAction += self._workorder_dlg_action
+        self._wo_dlg.Show()
 
-    def body(self, master):
-        # create dialog body.  return widget that should have
-        # initial focus.  this method should be overridden
-        tk.Label(master, text="Workorder:").grid(row=0)
-        self.entry = tk.Entry(master)
-        self.entry.grid(row=0, column=1)
-        return self.entry  # initial focus
-
-    def apply(self):
-        self._gui.g_workorder = self.entry.get()
-        self._gui.work_order_label.config(text=("workorder: " + self._gui.g_workorder))
-        self._gui.work_order_label.update()
-
-    def validate(self):
+    def _workorder_dlg_action(self, sender, e):
+        self._gui.g_workorder = self._wo_dlg.InputText
+        self._wo_dlg.Hide()
+        self._gui.update_workorder()
         return 1
 
 
-class UpdateStationIdDialog(utils.gui_utils.Dialog):
+class UpdateStationIdDialog(object):
     def __init__(self, factory_gui, parent, title):
-        utils.gui_utils.Dialog.__init__(self, parent, title)
         self._gui = factory_gui
         self._station_id = None
-
-    def body(self, master):
-        tk.Label(master, text="Station ID:").grid(row=0)
-        self.entry = tk.Entry(master)
-        self.entry.grid(row=0, column=1)
-        return self.entry  # initial focus
+        self._station_id_pattern = r'[\\/:*?"<>|\r\n]+'
+        self._station_type_dlg = InputMsgBox()
+        self._station_type_dlg.Owner = parent
+        self._station_type_dlg.Title = title
+        self._station_type_dlg.MuAction += self._station_type_dlg_action
+        self._station_type_dlg.Show()
 
     def apply(self):
-        if self._gui.station_config.FACEBOOK_IT_ENABLED:
-            self._gui.root.title("Oculus HWTE " + self._station_id)
-        else:
-            self._gui.root.title("Oculus HWTE " + self._station_id + " - FACEBOOK IT DISABLED!!!")
+        self._gui.root.Title = f"Oculus HWTE {self._station_id}"
         self._gui.setguistate_initializetester(self._gui.station)
+        self._station_type_dlg.Hide()
+        if self._gui.station_config.USE_WORKORDER_ENTRY:
+            self._gui.update_workorder_display()
 
-    def validate(self):
-        self._station_id = self.entry.get()
+    def _station_type_dlg_action(self, sender, e):
+        self._station_id = self._station_type_dlg.InputText
         try:
+            if re.search(self._station_id_pattern, self._station_id, re.I|re.S):
+                raise ValueError
             (self._gui.station_config.STATION_TYPE,
              self._gui.station_config.STATION_NUMBER) = re.split('-', self._station_id)
             self._gui.create_station()
+            self.apply()
             return True
         except ValueError:
-            messagebox.showerror(title="Station Config Error",
-                                   message=("Station ID is of the form stationId-stationNumber"))
+            MessageBox.error(title="Station Config Error",
+                             msg="Station ID is of the form stationId-stationNumber")
             return False
         except test_station.test_station.TestStationError:
-            messagebox.showerror(title="Station Config Error", message=("%s is not a valid station type!" %
-                                                                          self._gui.station_config.STATION_TYPE))
+            MessageBox.error(title="Station Config Error",
+                             msg=f"{self._gui.station_config.STATION_TYPE} is not a valid station type!")
             return False
         except:
             # raise any other weird exceptions we might get
