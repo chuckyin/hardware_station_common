@@ -24,9 +24,10 @@ class ShopFloor(object):
                 return
             py = None
             try:
-                config_path = os.path.join(os.getcwd(), '..\\shop_floor_interface')
+                sf_dir = station_config.SHOPFLOOR_DIR if hasattr(station_config, 'SHOPFLOOR_DIR') else '.'
+                config_path = os.path.join(os.getcwd(), '..\\shop_floor_interface', sf_dir)
                 if os.path.exists(__file__):
-                    config_path = os.path.join(os.getcwd(), 'shop_floor_interface')
+                    config_path = os.path.join(os.getcwd(), 'shop_floor_interface', sf_dir)
                 py = os.path.join(config_path, 'shop_floor_{0}.py'.format(station_config.SHOPFLOOR_SYSTEM))
                 if os.path.exists(py):
                     exec(open(py, 'rb').read(), globals())

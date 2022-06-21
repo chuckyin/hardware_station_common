@@ -48,6 +48,7 @@ SERIAL_NUMBER_MODEL_NUMBER = 'H'  # Fake model number requirement, need config. 
 # shopfloor
 #
 SHOPFLOOR_SYSTEM = 'Foxlink'
+SHOPFLOOR_DIR = '.'
 # Will we be enforcing shopfloor routing?
 ENFORCE_SHOPFLOOR_ROUTING = False
 # does the shopfloor use work orders?
