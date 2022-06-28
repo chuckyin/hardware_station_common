@@ -20,24 +20,11 @@ import gc
 import logging
 import datetime
 import clr
+import UIDep.UIDepHelper as ui_dep_helper
 
-
-clr.AddReference("PresentationFramework.Classic, Version=3.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35")
-clr.AddReference("PresentationCore, Version=3.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35")
-clr.AddReference('CommonServiceLocator')
-clr.AddReference('ErrorHandler')
-clr.AddReference('GalaSoft.MvvmLight')
-clr.AddReference('GalaSoft.MvvmLight.Extras')
-clr.AddReference('GalaSoft.MvvmLight.Platform')
-clr.AddReference('log4net')
-clr.AddReference('Newtonsoft.Json')
-clr.AddReference('PresentationFramework.Aero2')
-clr.AddReference('System.Windows.Interactivity')
-clr.AddReference('StationNetCore')
-clr.AddReference('WPFMessageBox')
-clr.AddReference('Xceed.Wpf.DataGrid')
-clr.AddReference('Xceed.Wpf.Toolkit')
-clr.AddReference('Hsc')
+depencies = ui_dep_helper.all_depencies()
+for c in depencies:
+    clr.AddReference(c)
 
 from System.Windows import Application, Window
 from System.Threading import Thread, ApartmentState, ThreadStart

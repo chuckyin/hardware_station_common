@@ -9,10 +9,13 @@ from hardware_station_common import utils
 import json
 
 import clr
-clr.AddReference('Xceed.Wpf.Toolkit')
-clr.AddReference('StationNetCore')
-clr.AddReference("PresentationFramework.Classic, Version=3.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35")
-clr.AddReference("PresentationCore, Version=3.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35")
+import UIDep.UIDepHelper as ui_dep_helper
+
+depencies = ui_dep_helper.all_depencies()
+
+for c in depencies:
+    clr.AddReference(c)
+
 from System.Windows import Application, Window
 from System.Threading import Thread, ApartmentState, ThreadStart
 from System import Action, Delegate, Func

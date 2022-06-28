@@ -10,8 +10,11 @@ import tkinter as tk
 #import tkMessageBox
 from tkinter import messagebox
 import clr
-clr.AddReference('WPFMessageBox')
-clr.AddReference('Hsc')
+# clr.AddReference('WPFMessageBox')
+# clr.AddReference('Hsc')
+from UIDep import UIDepHelper
+for c in UIDepHelper.all_depencies():
+    clr.AddReference(c)
 from MessageBoxUtils import WPFMessageBox
 from Hsc import ImageDisplayBox as imgDispBox
 
