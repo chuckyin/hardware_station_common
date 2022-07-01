@@ -72,6 +72,9 @@ SHOW_CONSOLE = True
 # print all data to log-file
 IS_PRINT_TO_LOG = False
 
+# station_status
+IS_STATION_ACTIVE = True
+
 #####
 ### Facebook_IT Enable boolean
 FACEBOOK_IT_ENABLED = False
