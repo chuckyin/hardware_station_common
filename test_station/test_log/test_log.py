@@ -275,11 +275,11 @@ class TestRecord(object):
         # Meta data
         # NOTE: this is currently NOT writing out the user_metadata_dict.
         if (print_headers_only):
-            csv_line = "UUT_Serial_Number, Station_ID, StartTime, EndTime, OverallResult, OverallErrorCode, OverallErrorString"
+            csv_line = "UUT_Serial_Number,Station_ID,StartTime,EndTime,OverallResult,OverallErrorCode,OverallErrorString"
         else:
             err_code = self.get_overall_error_code()
             err_str = self.get_overall_error_string()
-            csv_line = "%s, %s, %s, %s, %s, %d, %s" % (self._uut_sn,
+            csv_line = "%s,%s,%s,%s,%s,%d,%s" % (self._uut_sn,
                                                    self._station_id,
                                                    utils.io_utils.timestamp(self._start_time),
                                                    utils.io_utils.timestamp(self._end_time),
@@ -294,11 +294,11 @@ class TestRecord(object):
                 if (print_headers_only):
                     csv_line += ", " + key
                 else:
-                    csv_line += ", " + "{0}".format(user_dictionary[key])
+                    csv_line += "," + "{0}".format(user_dictionary[key])
 
         # Individual Test results
         for test in self._results_array.values():
-            csv_line += ", " + test.s_print_csv(print_headers_only, print_measurements_only=print_measurements_only)
+            csv_line += "," + test.s_print_csv(print_headers_only, print_measurements_only=print_measurements_only)
 
         csv_line += "\n"
         return csv_line
@@ -610,7 +610,7 @@ class TestResult(object):
                 # In the case where we're printing the full results, the header is just 'MeasuredVal'
                 csv_line = self._test_name
             else:
-                csv_line = ("Index, TestName, MeasuredVal, LoLim, HiLim, Result, ErrorCode")
+                csv_line = ("Index,TestName,MeasuredVal,LoLim,HiLim,Result,ErrorCode")
         else:
 
             # Processing of MeasuredValue is common to both paths:
@@ -638,18 +638,18 @@ class TestResult(object):
                     if self._low_limit is not None:
                         low = make_printable(self._low_limit)
                     else:
-                        low = ' '
+                        low = ''
                     if self._high_limit is not None:
                         high = make_printable(self._high_limit)
                     else:
-                        high = ' '
+                        high = ''
                     pass_fail = '(LOG)'
                 else:
                     low = make_printable(self._low_limit)
                     high = make_printable(self._high_limit)
                     pass_fail = self.get_pass_fail_string()
 
-                csv_line = ("%d, %s, %s, %s, %s, %s, %s" % (test_index,
+                csv_line = ("%d,%s,%s,%s,%s,%s,%s" % (test_index,
                                                                 name,
                                                                 val,
                                                                 low,
