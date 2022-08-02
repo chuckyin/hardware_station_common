@@ -75,13 +75,14 @@ class TestStation(object):
         testlog.load_limits(self._station_config)
 
         # Here's where the specialized station code is called:
-        ok_to_test_res = testlog.ok_to_test(serial_num)
-        if ok_to_test_res is True or (isinstance(ok_to_test_res, tuple) and ok_to_test_res[0]):
-            (self._overall_result, self._first_failing_test_result) = self._do_test(serial_num, testlog)
-        else:
-            self._operator_interface.print_to_console("[WARNING] Process Control Error for %s\n" % serial_num,
-                                                      'yellow')
-            raise TestStationProcessControlError(f'not ok for testing, {ok_to_test_res}')
+        # ok_to_test_res = testlog.ok_to_test(serial_num)
+        (self._overall_result, self._first_failing_test_result) = self._do_test(serial_num, testlog)
+        # if ok_to_test_res is True or (isinstance(ok_to_test_res, tuple) and ok_to_test_res[0]):
+        #     (self._overall_result, self._first_failing_test_result) = self._do_test(serial_num, testlog)
+        # else:
+        #     self._operator_interface.print_to_console("[WARNING] Process Control Error for %s\n" % serial_num,
+        #                                               'yellow')
+        #     raise TestStationProcessControlError(f'not ok for testing, {ok_to_test_res}')
 
         # stuff like submit?
         # if successful submission is required for pass, check that here based on a flag

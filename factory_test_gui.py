@@ -310,13 +310,13 @@ class FactoryTestGui(object):
                 {'FinalResult': '', 'Hint': '', 'ResultMsg': '', 'ResultMsgEx': ''})
             self._operator_interface.prompt('', '')
 
-            self.station.validate_sn(user_value)
-            if self.is_looping_enabled():
-                self._g_num_loops_completed = 0
-                self._g_num_passing_loops = 0
-                self.update_loop_counter()
-            self.station.is_ready()
-            self.thread_it(self.run_test, user_value)
+            if self.station.validate_sn(user_value) is True:
+                if self.is_looping_enabled():
+                    self._g_num_loops_completed = 0
+                    self._g_num_passing_loops = 0
+                    self.update_loop_counter()
+                if self.station.is_ready() is True:
+                    self.thread_it(self.run_test, user_value)
         except test_station.test_station.TestStationSerialNumberError as teststationerror:
             self._operator_interface.print_to_console(msg="%s" % str(teststationerror), color='red')
         except Exception as e:
