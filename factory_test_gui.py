@@ -266,7 +266,7 @@ class FactoryTestGui(object):
             self._operator_interface.print_to_console('Station Type: %s\n' % self.station_config.STATION_TYPE)
             self.station = self._test_station_init(self.station_config, self._operator_interface)
             station_id = (f'{self.station_config.STATION_TYPE}_{self.station_config.STATION_NUMBER}')
-            self._operator_interface.update_root_config({'Title': f'Oculus HWTE {station_id}'})
+            self.root.Title = f'Oculus HWTE {station_id}'
         except:
             raise
 
