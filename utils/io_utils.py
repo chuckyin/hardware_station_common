@@ -6,6 +6,7 @@ Various I/O helper functions
 import os
 import time
 import datetime
+import math
 
 
 def read_line_from_file(filename):
@@ -56,7 +57,9 @@ def datestamp(datetime_object=None):
         datetime_object = datetime.datetime.now()
     return datetime_object.strftime("%Y%m%d")
 
-def round_ex(number, ndigits, rounding='ROUND_HALF_UP'):
+def round_ex(number, ndigits=2, rounding='ROUND_HALF_UP'):
+    if not math.isfinite(number):
+        return number
     if rounding == 'ROUND_HALF_UP':
         return round(number * (10 ** ndigits)) / float(10 ** ndigits)
     elif rounding == 'ROUND_HALF_EVEN':
