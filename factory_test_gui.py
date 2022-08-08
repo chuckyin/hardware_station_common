@@ -341,7 +341,7 @@ class FactoryTestGui(object):
             init_config['VersionData'] = version_data
         if hasattr(self.station_config, 'SW_TITLE'):
             init_config['SwTitle'] = self.station_config.SW_TITLE
-        init_config['Offline'] = str(not self.station_config.FACEBOOK_IT_ENABLED)
+        # init_config['Offline'] = str(not self.station_config.FACEBOOK_IT_ENABLED)
         init_config['Active'] = 'True'
         init_config['IsEnabled'] = 'False'
         if hasattr(self.station_config, 'Active'):
