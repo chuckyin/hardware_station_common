@@ -20,6 +20,7 @@ import gc
 import logging
 import datetime
 import clr
+from pyexceptions import handle_exceptions
 import UIDep.UIDepHelper as ui_dep_helper
 
 depencies = ui_dep_helper.all_depencies()
@@ -376,6 +377,7 @@ class FactoryTestGui(object):
         app.Exit += self.on_app_exit
         app.Run()
 
+    @handle_exceptions(exceptions_folder='../handled_exceptions', only_last=False)
     def main_loop(self):
         try:
             t = Thread(ThreadStart(self.STAMain))
