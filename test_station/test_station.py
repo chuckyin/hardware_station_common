@@ -37,6 +37,13 @@ class TestStation(object):
         self._array = test_log.TestRecord.pre_load_limit(station_config)
 
         test_items = []
+        if hasattr(station_config, 'FULL_TREE_UI') and station_config.FULL_TREE_UI:
+            csv_line = test_log.TestRecord.CSV_LINE
+            csv_headers = csv_line.split(',')
+            for idx, header in enumerate(csv_headers):
+                test_items.append({
+                    'Item': header, 'ErrCode': '', 'Lsl': '', 'Usl': ''
+                })
         for test_result in self._array:
             name = test_result.get_test_name()
             lsl = test_result._low_limit
@@ -74,6 +81,12 @@ class TestStation(object):
         self._operator_interface.print_to_console("Checking Unit %s...\n" % serial_num)
         testlog.load_limits(self._station_config)
 
+        pre_data = {'UUT_Serial_Number': testlog.get_uut_sn(),
+                    'Station_ID': testlog.get_station_id(),
+                    'StartTime': utils.io_utils.timestamp(testlog._start_time)}
+        for k, v in pre_data.items():
+            self._operator_interface.update_test_value(item_name=k, val=v, result=0)
+
         # Here's where the specialized station code is called:
         # ok_to_test_res = testlog.ok_to_test(serial_num)
         (self._overall_result, self._first_failing_test_result) = self._do_test(serial_num, testlog)
@@ -88,6 +101,14 @@ class TestStation(object):
         # if successful submission is required for pass, check that here based on a flag
 
         testlog.end_test()
+        # update test items after finishing.
+        pre_data = {'OverallResult': testlog.get_overall_result(),
+                    'OverallErrorCode': testlog.get_overall_error_code(),
+                    'OverallErrorString': testlog.get_overall_error_string(),
+                    'EndTime': utils.io_utils.timestamp(testlog._end_time)}
+        for k, v in pre_data.items():
+            self._operator_interface.update_test_value(item_name=k, val=v, result=0)
+
         try:
             testlog.print_to_csvfile()
             if hasattr(self._station_config, 'CSV_SUMMARY_DIR') and self._station_config.CSV_SUMMARY_DIR is not None:

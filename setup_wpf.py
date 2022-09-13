@@ -18,7 +18,7 @@ class BinaryDistribution(Distribution):
 
 setup(
     name='hardware_station_common_wpf',
-    version='1.0.0.0',
+    version='1.0.0.1',
     url='',
     license='',
     author='elton',

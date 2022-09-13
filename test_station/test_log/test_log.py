@@ -63,6 +63,8 @@ class TestRecord(object):
     def __del__(self):
         del self._results_array, self._user_meta_data_dict, self._shopfloor
 
+    CSV_LINE = "UUT_Serial_Number,Station_ID,StartTime,EndTime,OverallResult,OverallErrorCode,OverallErrorString"
+
     def __init__(self, uut_sn, logs_dir="logs", station_id=None):
         self._uut_sn = uut_sn
         self._start_time = datetime.now()
@@ -242,7 +244,8 @@ class TestRecord(object):
         return self._first_failing_test_result
 
     def sprint_csv_summary_header(self):
-        csv_line = "UUT_Serial_Number,Station_ID,StartTime,EndTime,OverallResult,OverallErrorCode,OverallErrorString"
+        # csv_line = "UUT_Serial_Number,Station_ID,StartTime,EndTime,OverallResult,OverallErrorCode,OverallErrorString"
+        csv_line = TestRecord.CSV_LINE
         user_dictionary = self.get_user_metadata_dict()
         if user_dictionary is not None:
             for key in user_dictionary:
@@ -275,7 +278,8 @@ class TestRecord(object):
         # Meta data
         # NOTE: this is currently NOT writing out the user_metadata_dict.
         if (print_headers_only):
-            csv_line = "UUT_Serial_Number,Station_ID,StartTime,EndTime,OverallResult,OverallErrorCode,OverallErrorString"
+            # csv_line = "UUT_Serial_Number,Station_ID,StartTime,EndTime,OverallResult,OverallErrorCode,OverallErrorString"
+            csv_line = TestRecord.CSV_LINE
         else:
             err_code = self.get_overall_error_code()
             err_str = self.get_overall_error_string()
