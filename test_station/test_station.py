@@ -161,3 +161,6 @@ class TestStation(object):
 
     def login(self, active, usr, pwd):
         raise NotImplementedError()
+
+    def extend_menuitem_click(self, command, content):
+        raise NotImplementedError()

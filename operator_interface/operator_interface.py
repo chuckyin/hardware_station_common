@@ -39,6 +39,12 @@ class OperatorInterface(object):
             except:
                 raise
 
+    def menubtn_cfg(self, key, status, text):
+        if Application.Current.Dispatcher.CheckAccess():
+            return self._console.UpdateMenuItem(key, status, text)
+        else:
+            return Application.Current.Dispatcher.Invoke(Func[str, bool, str](self.menubtn_cfg))
+
     def prompt(self, msg, color='aliceblue'):
         self._console.UpdatePromptMsg(msg, color)
 

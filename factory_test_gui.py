@@ -297,8 +297,11 @@ class FactoryTestGui(object):
             self.update_workorder_display()
         elif sender == 'AutoScan':
             self.station_config.AUTO_SCAN_CODE = bool(e)
+        else:
+            self.station.extend_menuitem_click(sender, e)
 
     def usr_pwd_login(self, status, usr, pwd):
+        self._operator_interface.print_to_console(f'active command login: {usr}====>')
         return self.station.login(status, usr, pwd)
 
     def start_loop(self, user_value):
