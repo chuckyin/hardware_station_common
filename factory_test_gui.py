@@ -45,6 +45,7 @@ class FactoryTestGui(object):
         self.station = None
         self._operator_interface = None
         self._g_loop_sn = None
+        self._g_delays = 1
         self._g_num_loops_completed = 0
         self._g_num_passing_loops = 0
         self._g_target_num_loops = None   # None is special flag for "we're not looping."
@@ -194,7 +195,7 @@ class FactoryTestGui(object):
             self._g_loop_sn = serial_number  # record the SN into the persistent global for next time.
         self.test_iteration(serial_number)
         while self._g_loop_sn is not None:
-            time.sleep(1)
+            time.sleep(self._g_delays)
             self._operator_interface.clear_console()
             self._operator_interface.clear_test_values()
             self._operator_interface.update_root_config(
@@ -279,10 +280,13 @@ class FactoryTestGui(object):
         # Arg handling
         # handle command-line args
         parser = argparse.ArgumentParser(description='GUI for Programming/Test station.')
-        loop_help = 'FOR STATION VERIFICATION ONLY: number of timesto repeat the test without cycling the fixture.'
+        loop_help = 'FOR STATION VERIFICATION ONLY:' \
+                    '-l (numloops), number of timesto repeat the test without cycling the fixture.' \
+                    '-d (delays), number of delay seconds when repeating'
         parser.add_argument('-l', '--numloops',
                             type=int,
                             help=loop_help)
+        parser.add_argument('-d', '--delays', default=1, type=int, help=loop_help)
 
         args = parser.parse_args()
         return args
@@ -396,6 +400,7 @@ class FactoryTestGui(object):
             self._g_num_loops_completed = 0
             self._g_num_passing_loops = 0
             self._g_loop_sn = None
+            self._g_delays = args.delays
             if args.numloops is not None:
                 self._g_target_num_loops = args.numloops
 
