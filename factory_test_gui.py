@@ -206,6 +206,7 @@ class FactoryTestGui(object):
 
         self._operator_interface.update_root_config({'IsBusy': 'False', 'SN': ''})
         self._operator_interface.prompt('Scan or the type DUT Serial Number', 'green')
+        self._vm_main_view_model.MovFocusToSn()
         # Application.Current.Dispatcher.Invoke(Action(self.reset_running_status))
 
     def get_free_space_mb(self, folder):
