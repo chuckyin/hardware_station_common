@@ -140,7 +140,7 @@ class FactoryTestGui(object):
                     if hasattr(self.station_config, 'SHOW_CONSOLE') and self.station_config.SHOW_CONSOLE:
                         show_console = 1
                 ctypes.windll.user32.ShowWindow(whnd, show_console)
-                self._vm_main_view_model.MovFocusToSn()
+
                 setup_ok = True
             except (test_station.test_station.TestStationError, Exception) as e:
                 self._operator_interface.print_to_console(f"Error Initializing Test Station {str(e)}.\n", "red")
@@ -149,6 +149,7 @@ class FactoryTestGui(object):
             self._operator_interface.print_to_console("Initialization complete.\n")
             if init_ui_status != False:
                 self._operator_interface.update_root_config({'IsEnabled': 'True'})
+                self._vm_main_view_model.MovFocusToSn()
             self._operator_interface.print_to_console("waiting for sn\n")
             self._operator_interface.prompt("Scan or type the DUT Serial Number", 'green')
 
@@ -205,7 +206,6 @@ class FactoryTestGui(object):
 
         self._operator_interface.update_root_config({'IsBusy': 'False', 'SN': ''})
         self._operator_interface.prompt('Scan or the type DUT Serial Number', 'green')
-        self._vm_main_view_model.MovFocusToSn()
         # Application.Current.Dispatcher.Invoke(Action(self.reset_running_status))
 
     def get_free_space_mb(self, folder):
