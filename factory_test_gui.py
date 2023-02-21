@@ -239,24 +239,27 @@ class FactoryTestGui(object):
         self.root.Close()
 
     def gui_show_result(self, serial_number, overall_result, first_failed_test_result=None):
-        self._operator_interface.print_to_console('-----------------------------------\n')
+        self._operator_interface.print_to_console(f'------------------------{serial_number}: {overall_result}\n')
         did_pass = False
-        if overall_result:
+        if overall_result in [True, 'WAIVE', 'PASS', 'OK']:
             did_pass = True
             error_code = '[0]'
-        else:
+        elif overall_result in [False, 'NG', 'FAIL']:
             if first_failed_test_result is None:
                 error_code = "(unknown)"
             else:
                 error_code = "{0}.{1}".format(
                     first_failed_test_result.get_unique_id(),
                     first_failed_test_result.get_error_code_as_string())
+        else:
+            raise ValueError(f'{serial_number}  ==> {overall_result}')
 
         if did_pass:
+            final_result = 'WAIVE' if overall_result in ['WAIVE'] else 'OK'
             self._operator_interface.update_root_config({
-                'FinalResult': 'OK',
+                'FinalResult': final_result,
                 'ResultMsg': ''})
-            self._operator_interface.print_to_console(f'Unit {serial_number} OK\n')
+            self._operator_interface.print_to_console(f'Unit {serial_number} {final_result}\n')
         else:
             self._operator_interface.update_root_config({
                 'FinalResult': 'NG',
