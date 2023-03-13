@@ -63,7 +63,7 @@ class TestRecord(object):
     def __del__(self):
         del self._results_array, self._user_meta_data_dict, self._shopfloor
 
-    CSV_LINE = "UUT_Serial_Number,Station_ID,StartTime,EndTime,OverallResult,OverallErrorCode,OverallErrorString"
+    CSV_LINE = "SerialNumber,TesterName,StartTime,EndTime,OverallResult,OverallErrorCode,OverallErrorString"
 
     def __init__(self, uut_sn, logs_dir="logs", station_id=None):
         self._uut_sn = uut_sn
@@ -244,7 +244,6 @@ class TestRecord(object):
         return self._first_failing_test_result
 
     def sprint_csv_summary_header(self):
-        # csv_line = "UUT_Serial_Number,Station_ID,StartTime,EndTime,OverallResult,OverallErrorCode,OverallErrorString"
         csv_line = TestRecord.CSV_LINE
         user_dictionary = self.get_user_metadata_dict()
         if user_dictionary is not None:
@@ -278,7 +277,6 @@ class TestRecord(object):
         # Meta data
         # NOTE: this is currently NOT writing out the user_metadata_dict.
         if (print_headers_only):
-            # csv_line = "UUT_Serial_Number,Station_ID,StartTime,EndTime,OverallResult,OverallErrorCode,OverallErrorString"
             csv_line = TestRecord.CSV_LINE
         else:
             err_code = self.get_overall_error_code()
@@ -328,8 +326,8 @@ class TestRecord(object):
     def sprint_meta_data_to_csv(self):
         #  mirror TestResult csv format: TestName, MeasuredVal, LoLim, HiLim, Timestamp, Result, ErrorCode
         header_string = print_csv_headers()
-        header_string += format_as_testresult_string("UUT_Serial_Number", self._uut_sn)
-        header_string += format_as_testresult_string("Station_ID", self._station_id)
+        header_string += format_as_testresult_string("SerialNumber", self._uut_sn)
+        header_string += format_as_testresult_string("TesterName", self._station_id)
         header_string += format_as_testresult_string("Start_Time", utils.io_utils.timestamp(self._start_time))
         header_string += format_as_testresult_string("End_Time", utils.io_utils.timestamp(self._end_time))
         header_string += format_as_testresult_string("Overall_Result", self.get_pass_fail_string())
