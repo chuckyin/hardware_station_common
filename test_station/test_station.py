@@ -81,8 +81,8 @@ class TestStation(object):
         self._operator_interface.print_to_console("Checking Unit %s...\n" % serial_num)
         testlog.load_limits(self._station_config)
 
-        pre_data = {'UUT_Serial_Number': testlog.get_uut_sn(),
-                    'Station_ID': testlog.get_station_id(),
+        pre_data = {'SerialNumber': testlog.get_uut_sn(),
+                    'TesterName': testlog.get_station_id(),
                     'StartTime': utils.io_utils.timestamp(testlog._start_time)}
         for k, v in pre_data.items():
             self._operator_interface.update_test_value(item_name=k, val=v, result=0)
