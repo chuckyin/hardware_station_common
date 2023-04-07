@@ -95,7 +95,7 @@ class OperatorInterface(object):
             else:
                 raise OperatorInterfaceError("undefined operator input type!")
         else:
-            Application.Current.Dispatcher.Invoke(Action[str, str, str, int](self.operator_input), title, msg, msg_type, msgbtn)
+            return Application.Current.Dispatcher.Invoke(Action[str, str, str, int](self.operator_input), title, msg, msg_type, msgbtn)
 
     def wait(self, pause_seconds, rationale=None):
         """
